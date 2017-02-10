@@ -101,6 +101,9 @@ if(args.list_stations or args.station != None):
     FLAG_DIST=False
     if(args.station != None):
         logger.info('Looking for station with name:' + args.station[0])
+        sname_tmp = args.station[0]
+    else:
+        sname_tmp = None
     stations_file = pkg_resources.resource_filename('pycnv', 'stations/stations.yaml')
     print('Stations file:',stations_file)
     f_stations = open(stations_file)
@@ -120,7 +123,7 @@ if(args.list_stations or args.station != None):
 
         namestation.extend(anames)
         for sname in namestation:
-            if(sname == args.station[0]):
+            if(sname == sname_tmp):
                 FLAG_DIST=True
                 logger.info('Found station')
                 londist  = lonstation
@@ -135,9 +138,9 @@ if(args.list_stations or args.station != None):
 
 
         if(args.list_stations == True):
-            print(namestation,lonstation,latstation,anames)
+            print(namestation,lonstation,latstation)
 
-    if(FLAG_DIST == False):
+    if(FLAG_DIST == False and sname_tmp != None):
         logger.critical('Could not find a station with name ' + args.station[0] +  ' in station file, exiting.')
         sys.exit(1)
 
