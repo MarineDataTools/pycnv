@@ -22,4 +22,15 @@ Uninstall as a user
    
 .. code:: bash
 	  
-   pip uninstall pycnv
+pip uninstall pycnv
+
+
+
+USAGE
+-----
+
+The package installs the executables:
+
+- pycnv
+
+- pycnv_sum_folder
