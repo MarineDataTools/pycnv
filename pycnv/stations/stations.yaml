@@ -1,0 +1,15 @@
+stations:
+    - name: TF271
+      alternative_names: [BY15, BMPJ01, C1]
+      description: Monitoring station, central Gotland Basin
+      latitude: 57.305
+      longitude: 20.07666
+      depth: 242
+
+    - name: TF213
+      alternative_names: [BMPK02]
+      description: Monitoring station, central Bornhol Basin
+      latitude: 55.25000
+      longitude: 15.98333
+      depth: 100
+
