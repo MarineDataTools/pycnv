@@ -4,14 +4,14 @@ from numpy import *
 import logging
 import sys
 import argparse
-
+import yaml
     
 
 # TODO: add NMEA position, time
 
 # Setup logging module
 logging.basicConfig(stream=sys.stderr, level=logging.WARNING)
-logger = logging.getLogger('pycnv')
+logger = logging.getLogger('pycnv2')
 
 
 try:
@@ -56,264 +56,8 @@ def date_correction(tag, monat, jahr):
         return None
 
 
-def extract_cnv_data(filename,only_metadata = False):
-    """
-    
-    @author: Robert Mars, IOW
-    modified and improved by Peter Holtermann, IOW
 
-    Args:
-        filename: filename of the cnv file
-        only_metadata: True/False, if true no data is read in and only the header with the metadata is returned
-    
-    """    
-
-    kanal_namen = []
-    units = []
-    data = []
-    ######
-    header_end = False
-    fh_in = open(filename, "r")
-    # Loop through lines and parse header/data
-    for nl,line in enumerate(fh_in):
-        ###### Datum und Uhrzeit der Station ermitteln 
-        if "System UpLoad Time" in line:
-            line = line.split(" ")
-            monat = line[5]
-            tag = line[6]
-            jahr = line[7]
-            datum_up = date_correction(tag, monat, jahr)
-            zeit_up = line[8].replace("\n","").replace("\r","")
-#            print("%s" % datum)
-#            print("%s" % zeit)
-        # if "System UpLoad Time" is not in header
-        elif "start_time" in line:
-            #print(line)
-            try:
-                line = line.split(" ")
-                monat = line[3]
-                tag = line[4]
-                jahr = line[5]
-                datum = date_correction(tag, monat, jahr)
-                zeit = line[6].replace("\n","").replace("\r","")
-            except Exception as e:
-                logger.warning('start_time parsing error:' + str(e))
-                logger.warning('start_time str:' + line_orig)                
-                
-#            print("%s" % datum)
-#            print("%s" % zeit)
-        elif  "Startzeit" in line:
-            # ** Startzeit= 13:13:15 25-Sep-07
-            line_orig = line
-            #print(line)
-            try:
-                line = line.replace("\n","").replace("\r","")
-                line = line.split("=")     
-                line = line[1]
-                line = line.replace("  "," ")
-                while(line[0] == " "):
-                    line = line[1:]
-
-                line_split = line.split(" ")
-                # Get datum
-                datum_split = line_split[1].split("-")            
-                tag = datum_split[0]
-                monat = datum_split[1]            
-                jahr = datum_split[2]
-                if(len(jahr) == 2):
-                    jahr = '20' + jahr
-
-                #print(line)
-                datum_start = date_correction(tag, monat, jahr)
-                # get time
-                zeit_start = line_split[0]
-            except Exception as e:
-                logger.warning('Startzeit parsing error:' + str(e))
-                logger.warning('Startzeit str:' + line_orig)
-            
-        ###### Meta-Daten der Reise und Station
-        elif "ReiseNr" in line:
-            line = line.split("=")
-            reise = line[1]
-            reise = reise.replace(" ","")
-            reise = reise.replace("\n","").replace("\r","")
-            # print("Reise: %s" % reise)
-        elif "StatBez" in line:
-            line = line.split("=")
-            station_bez = line[1]
-            # station_bez = station_bez.replace(" ","")
-            station_bez = station_bez.replace("\n","").replace("\r","")
-            # print("Station: %s" % station_bez)
-        elif "EinsatzNr" in line:
-            line = line.split("=")
-            einsatz_nr = line[1]
-            einsatz_nr = einsatz_nr.replace(" ","")
-            einsatz_nr = einsatz_nr.replace("\n","").replace("\r","")
-            # print("Einsatz: %s" % einsatz_nr)
-        elif "SerieNr" in line and "Operator" in line:
-            line_orig = line
-            line.replace("\n","").replace("\r","")
-            line = line.split()
-            try:
-                serie_nr = line[3]
-            except Exception as e:
-                logger.warning('SerieNr parsing error:' + str(e))
-                logger.warning('str:' + line_orig)
-
-            try:                
-                operator = line[5]
-            except Exception as e:
-                logger.warning('Operator parsing error:' + str(e))
-                logger.warning('str:' + line_orig)
-                
-            # print("Serie: %s" % serie_nr)
-            # print("Operator: %s" % operator)
-        elif "GPS_Posn" in line:
-            try:
-                
-                pos_str = line.rsplit('=')[1]
-                pos_str = pos_str.replace("\n","").replace("\r","") 
-                if("S" in pos_str):
-                    SIGN_NORTH = -1.
-                    CHAR_NORTH = 'S'
-                if("N" in pos_str):
-                    SIGN_NORTH = 1.
-                    CHAR_NORTH = 'N'                
-
-                if("E" in pos_str):
-                    SIGN_WEST = 1.0
-                    CHAR_WEST = 'E'
-                if("W" in pos_str):
-                    SIGN_WEST = -1.0
-                    CHAR_WEST = 'W'
-
-                pos_str = pos_str.replace("N","")
-                pos_str = pos_str.replace("S","")
-                pos_str = pos_str.replace("E","")
-                pos_str = pos_str.replace("W","")
-                pos_str = pos_str.replace("  "," ")
-                pos_str = pos_str.split()
-                while(pos_str[0] == " "):
-                        pos_str = pos_str[1:]
-
-
-                latitude = ("%s %s" % (pos_str[0],pos_str[1]))
-                longitude = ("%s %s" % (pos_str[2],pos_str[3]))
-                latitude += CHAR_NORTH
-                longitude += CHAR_WEST
-                # Convert to floats
-                lon = SIGN_WEST * float(longitude.split()[0]) + float(longitude.split()[1][:-1])/60.
-                lat = SIGN_NORTH * float(latitude.split()[0]) + float(latitude.split()[1][:-1])/60.           
-            except Exception as e:
-                logger.warning('Could not get a valid position, setting it to unknown:' + str(e))
-                logger.warning('str:' + line)
-                logger.warning('pos str:' + str(pos_str))
-                latitude = 'unknown'
-                longitude = 'unknown'
-                lat = NaN
-                lon = NaN
-                
-        # Get indices of data columns
-        elif "# name" in line:
-            line = line.split("= ")
-            # line[1] = line[1].replace("\n","")
-            line[1] = line[1].replace("\n","").replace("\r","")
-            kanal_namen.append(line[1])
-            # print(line[1])
-            line = line[1].split("[")
-            # print(line)
-            if len(line) > 1 :
-                line = line[1].split("]")
-                # print(line)
-                units.append (line[0])
-            else: 
-                # print("no unit")
-                units.append ("no unit defined")
-        elif "*END*" in line:
-            # print(kanal_namen)
-            ### Ende des Headers markieren --> Beginn der Daten
-            header_end = True
-            continue
-        #
-        # Read the data
-        #
-        if(header_end == True and only_metadata == False):
-            line_orig = line
-            line = line.replace("\n","").replace("\r","")
-            line = line.split()
-            #data.append (line)
-            try:
-                parsed_data = asarray(line,dtype='float')
-                # Check if we read the same amount of channels
-                if(len(parsed_data) == len(kanal_namen)):
-                    data.append(parsed_data)
-            except Exception as e:
-                logger.warning('Could not convert data to floats in line:' + str(nl))
-                logger.debug('str:' + line_orig)
-
-            
-    data = asarray(data)
-    
-    if 'reise' not in locals():
-        reise = "unknown"
-    if 'station_bez' not in locals():
-        station_bez = "unknown"
-    if 'einsatz_nr' not in locals():
-        einsatz_nr = "unknown"
-    if 'serie_nr' not in locals():
-        serie_nr = "unknown"
-    if 'operator' not in locals():
-        operator = "unknown"
-    if 'latitude' not in locals():
-        latitude = "unknown"
-        lat = NaN
-    if 'longitude' not in locals():
-        longitude = "unknown"
-        lon = NaN
-
-    # Check which date/time information to use
-    if 'datum' not in locals():
-        if('datum_up' in locals()):
-            datum = datum_up
-            zeit = zeit_up
-        if('datum_start' in locals()):
-            datum = datum_start
-            zeit = zeit_start
-        else:
-            datum = None
-            zeit = None            
-
-    #print(datum,zeit)
-    # Create the header
-    header = [datum, reise,station_bez,einsatz_nr,serie_nr,operator,latitude,longitude,zeit]
-    header_dict = {}
-    #if(datum != None):
-    try:
-        header_dict['date'] = datetime.datetime.strptime(datum + zeit,'%Y-%m-%d%H:%M:%S')
-        header_dict['date'].replace(tzinfo=timezone('UTC'))
-    except:
-    #else:
-        header_dict['date'] = None
-        
-    header_dict['mission'] = reise
-    header_dict['mission_nr'] = einsatz_nr
-    header_dict['operator'] = operator
-    header_dict['station'] = station_bez
-    header_dict['lat'] = lat
-    header_dict['lon'] = lon
-    header_dict['latstr'] = latitude
-    header_dict['lonstr'] = longitude
-    # Append header and data
-    data_return = {}
-    data_return['header'] = header_dict
-    data_return['channel_names'] = kanal_namen
-    data_return['data'] = data
-    data_return['units'] = units
-    #return(header,header_dict,kanal_namen,data,units)
-    return data_return
-
-
-class pycnv(object):
+class pycnv2(object):
     """
 
     A Seabird cnv parsing object.
@@ -333,258 +77,125 @@ class pycnv(object):
         """
         logger.setLevel(verbosity)
         logger.info(' Opening file: ' + filename)
-        # Parsing the data
-        raw_data = extract_cnv_data(filename, only_metadata = False)
         self.filename = filename
-        self.raw_data = raw_data
-        self.header = raw_data['header']
-        self.data = None
-        self.derived = {}
-        if(only_metadata):
-            return
-        # Fill the object with the data
+        self.channels = []     
+        # Opening file for read
+        raw = open(self.filename, "r")
+        # Find the header and store it
+        header = self.get_header(raw)
+        self.parse_header()
+        # Trying to extract standard names (p,C,S,T,oxy ... ) from the channel names
+        self.
+        
+        self.get_data(raw)
+
+        # Check if the dimensions are right
+        if( shape(self.raw_data)[1] == len(self.channels) ):
+            # Make a recarray out of the array
+            names   = []
+            formats = []
+            titles  = []
+            # Name the columns after the channel names
+            for n,c in enumerate(self.channels):
+                names.append(c['name'])
+                formats.append('float')
+                titles.append('c' + str(n))
+
+            print(names)
+            self.data = zeros(shape(self.raw_data)[0],dtype={'names':names,'formats':formats,'titles':titles})
+            for n,c in enumerate(self.channels):
+                self.data[n] = self.raw_data[n,:]
+
+            self.data = rec.array(self.data)
         else:
-            self.data_str = raw_data['data']
-            if(len(self.data_str) > 0):
-                self.data = {}
-                self.units = {}
-                data_ar = asarray(raw_data['data'])
-                for ind,channel_name in enumerate(raw_data['channel_names']):
-                    if('prDM:' in channel_name):
-                        logger.debug('Found pressure sensor (Digiquartz)')
-                        self.data['p'] = data_ar[:,ind]
-                        self.units['p'] = channel_name
-                        
-                    elif('pr:' in channel_name):
-                        logger.debug('Found pressure sensor')
-                        self.data['p'] = data_ar[:,ind]
-                        self.units['p'] = channel_name
-                        
-                    if('depS:' in channel_name):
-                        logger.debug('found depth in salt water channel')
-                        self.data['depS'] = data_ar[:,ind]
-                        self.units['depS'] = channel_name
-                        
-                    if('t090C:' in channel_name) or ('t090:' in channel_name):
-                        logger.debug('Found first temperature sensor')
-                        self.data['temp0'] = data_ar[:,ind]
-                        self.units['temp0'] = channel_name
+            logger.warning('Different number of columns in data section as defined in header, this is bad ...')
 
-                    if('t190C:' in channel_name) or ('t190:' in channel_name):
-                        logger.debug('Found second temperature sensor')
-                        self.data['temp1'] = data_ar[:,ind]
-                        self.units['temp1'] = channel_name
-
-                    if('c0mS/cm:' in channel_name):
-                        logger.debug('Found first conductivity sensor')
-                        self.data['cond0'] = data_ar[:,ind]
-                        self.units['cond0'] = channel_name
-
-                    if('c1mS/cm:' in channel_name):
-                        logger.debug('Found second conductivity sensor')
-                        self.data['cond1'] = data_ar[:,ind]
-                        self.units['cond1'] = channel_name
-
-                    #if('sal00:' in channel_name):
-                    #    logger.debug('Found salinity record')
-                    #    self.data['sal11'] = data_ar[:,ind]
-                    #    self.units['sal11'] = channel_name
-
-                    if('sal00:' in channel_name):
-                        logger.debug('Found salinity 0 record')
-                        self.data['sal00'] = data_ar[:,ind]
-                        self.units['sal00'] = channel_name
-
-                    if('sal11:' in channel_name):
-                        logger.debug('Found salinity 1 record')
-                        self.data['sal11'] = data_ar[:,ind]
-                        self.units['sal11'] = channel_name
-            else:
-                print('No data in the file')
-                return
-                
-
-    def derive(self,property):
+        
+    def get_header(self,raw):
         """
-
-        Derives seawater properties as salinity, buoyancy frequency squared etc.
+        Loops through lines and looks for header. It removes all \r leaving only \n for newline and saves the header in self.header as a string
         Args:
-            ST:
-            N2:
+        Return:
+            Line number of first data 
         """
+        self.header = ''
+        # Read line by line
+        nline = 0
+        for l in raw:
+            nline +=1
+            # removes all "\r", we only want "\n"
+            l = l.replace("\r","")
+            self.header += l
+            if("*END*" in l):
+                break
+            # Check if we read more than 10000 lines and found nothing
+            if(nline > 10000):
+                self.header = ''
+                break
 
-        try:
-            gsw
-        except:
-            logger.warning('GSW toolbox missing, derive will not work, doing nothing')
-            return
-        
-        if(property == 'ST'):
-            # Poor mans check if the variables exist
-            sensor_pair0 = False
-            sensor_pair1 = False
-            try:
-                tmp1 = self.data['cond0']
-                tmp1 = self.data['temp0']
-                tmp1 = self.data['p']
-                sensor_pair0 = True
-            except:
-                sensor_pair0 = False
+        return nline
 
-            try:
-                tmp1 = self.data['cond1']
-                tmp1 = self.data['temp1']
-                tmp1 = self.data['p']
-                sensor_pair1 = True
-            except:
-                sensor_pair1 = False                
-                
-                
-            if(sensor_pair0):
-                logger.debug('Calculating PSU0/SA11/CT11/rho11')
-                SP = gsw.SP_from_C(self.data['cond0'],self.data['temp0'],self.data['p'])
-                self.derived['SP00'] = SP
-                SA = gsw.SA_from_SP(SP,self.data['p'],self.header['lon'],self.header['lat'])
-                self.derived['SA00'] = SA
-                CT = gsw.CT_from_t(SA,self.data['temp0'],self.data['p'])
-                self.derived['CT00'] = CT
-                rho = gsw.rho_CT_exact(SA,CT,self.data['p'])
-                self.derived['rho00'] = rho
-            if(sensor_pair1):
-                logger.debug('Calculating PSU1/SA11/CT11/rho11') 
-                SP = gsw.SP_from_C(self.data['cond1'],self.data['temp1'],self.data['p'])
-                self.derived['SP11'] = SP
-                SA = gsw.SA_from_SP(SP,self.data['p'],self.header['lon'],self.header['lat'])
-                self.derived['SA11'] = SA
-                CT = gsw.CT_from_t(SA,self.data['temp1'],self.data['p'])
-                self.derived['CT11'] = CT
-                rho = gsw.rho_CT_exact(SA,CT,self.data['p'])
-                self.derived['rho11'] = rho                
-                
-                
-        if(property == 'N2'):
-            # Poor mans check if the variables exist
-            sensor_pair0 = False
-            sensor_pair1 = False
-            try:
-                tmp1 = self.derived['SA00']
-                tmp1 = self.derived['CT00']                
-                tmp1 = self.data['p']
-                sensor_pair0 = True
-            except:
-                logger.info('Did not find absolute salinities and temperature, do first a .derive("ST")')
-                sensor_pair0 = False
-
-            try:
-                tmp1 = self.derived['SA11']
-                tmp1 = self.derived['CT11']                
-                tmp1 = self.data['p']
-                sensor_pair1 = True
-            except:
-                logger.info('Did not find absolute salinities and temperature, do first a .derive("ST")')
-                sensor_pair1 = False
-
-            if(sensor_pair0):
-                logger.debug('Calculating Nsquared00')
-                [N2,p_mid] = gsw.Nsquared(self.derived['SA00'],self.derived['CT00'],self.data['p'])
-                self.derived['Nsquared00'] = interp(self.data['p'],p_mid,N2)
-            if(sensor_pair1):
-                logger.debug('Calculating Nsquared11')                
-                [N2,p_mid] = gsw.Nsquared(self.derived['SA11'],self.derived['CT11'],self.data['p'])
-                self.derived['Nsquared11'] = interp(self.data['p'],p_mid,N2)
-                
-                
-        if(property == 'alphabeta'):
-            # Poor mans check if the variables exist
-            sensor_pair0 = False
-            sensor_pair1 = False
-            try:
-                tmp1 = self.derived['SA00']
-                tmp1 = self.derived['CT00']                
-                tmp1 = self.data['p']
-                sensor_pair0 = True
-            except:
-                logger.info('Did not find absolute salinities and temperature, do first a .derive("ST")')
-                sensor_pair0 = False
-
-            try:
-                tmp1 = self.derived['SA11']
-                tmp1 = self.derived['CT11']                
-                tmp1 = self.data['p']
-                sensor_pair1 = True
-            except:
-                logger.info('Did not find absolute salinities and temperature, do first a .derive("ST")')
-                sensor_pair1 = False
-                
-
-            if(sensor_pair0):
-                logger.debug('Calculating Nsquared00')
-                alpha = gsw.alpha(self.derived['SA00'],self.derived['CT00'],self.data['p'])
-                beta = gsw.beta(self.derived['SA00'],self.derived['CT00'],self.data['p'])
-                self.derived['alpha00'] = alpha
-                self.derived['beta00'] = beta
-            if(sensor_pair1):
-                logger.debug('Calculating Nsquared11')                
-                alpha = gsw.alpha(self.derived['SA11'],self.derived['CT11'],self.data['p'])
-                beta = gsw.beta(self.derived['SA11'],self.derived['CT11'],self.data['p'])
-                self.derived['alpha11'] = alpha
-                self.derived['beta11'] = beta
-
-    def get_summary(self,header=False):
+    def parse_header(self):
         """
-        Returns a summary of the cnv file in a csv format
+        Parses the header of the cnv file
+        """
+        for l in self.header.split('\n'):
+            # Look for sensor names and units of type:
+            # # name 4 = t090C: Temperature [ITS-90, deg C]
+            if "# name" in l:
+                lsp = l.split("= ",1)
+                sensor = {}
+                sensor['index'] = int(lsp[0].split('name')[-1])
+                sensor['name'] = lsp[1].split(': ')[0]
+                sensor['long_name'] = lsp[1].split(': ')[1]
+                unit = lsp[1].split(': ')[1]
+                if len(unit.split('[')) > 1 :
+                    unit = unit.split('[')[1]
+                    unit = unit.split("]")[0]
+                    sensor['unit'] = unit
+                else:
+                    sensor['unit'] = None
+
+                self.channels.append(sensor)
+
+    def get_standard_channel_names(self, naming_rules):
+        """
+        Look through a list of rules to try to link names to standard names
         """
         
-        sep = ','
-        rstr = ""        
-        if(header):
-            rstr += 'Date,'
-            rstr += 'Lat,'
-            rstr += 'Lon,'
-            rstr += 'p min,'
-            rstr += 'p max,'
-            rstr += 'num p samples,'            
-            rstr += 'file,'            
-        else:
+        
+        
+    def get_data(self,raw):
+        """
+        Reads until the end of the file lines of data and puts them into one big numpy array
+        """
+        data = []
+        nline = 0
+        for l in raw:
+            line_orig = l
+            l = l.replace("\n","").replace("\r","")
+            l = l.split()
+            #data.append (line)
+            nline += 1
             try:
-                rstr += datetime.datetime.strftime(self.header['date'],'%Y-%m-%d %H:%M:%S') + sep
-            except: 
-                rstr += 'NaN' + sep
-            rstr += str(self.header['lat']) + sep
-            rstr += str(self.header['lon']) + sep
-            pmin = NaN
-            pmax = NaN
-            num_samples = NaN                    
-            if(self.data != None):
-                #print(self.data)
-                try:
-                    pmin = self.data['p'].min()
-                    pmax = self.data['p'].max()
-                    num_samples = len(self.data['p'])
-                except Exception as e:
-                    pass
 
-                                 
-            rstr += str(pmin) + sep
-            rstr += str(pmax) + sep
-            rstr += str(num_samples) + sep                
-            rstr += self.filename + sep
-                
-        return rstr
+                ldata = asarray(l,dtype='float')
+                # Get the number of columns with the first line
+                if(nline == 1):
+                    ncols = len(ldata)
 
+                if(len(ldata) == ncols):
+                    data.append(ldata)
+            except Exception as e:
+                logger.warning('Could not convert data to floats in line:' + str(nl))
+                logger.debug('str:' + line_orig)
 
-    def __str__(self):
-        """
-        String format
-        """
-        rstr = ""
-        rstr += "pycnv of " + self.filename
-        rstr += " at Lat: " + str(self.header['lat'])
-        rstr += ", Lon: " + str(self.header['lon'])
-        rstr += ", Date: " + datetime.datetime.strftime(self.header['date'],'%Y-%m-%d %H:%M:%S')
-        return rstr
+            
+        self.raw_data = asarray(data)
+            
           
-        
+def test_pycnv2():
+    pycnv2("/home/holterma/data/redox_drive/iow_data/fahrten.2011/06EZ1108.DTA/vCTD/DATA/cnv/0001_01.cnv")
 
 # Main function
 def main():
@@ -630,7 +241,9 @@ def main():
         print(summary)
 
 
-if __name__ == '__main__':
-    main()
+pc = pycnv2("/home/holterma/data/redox_drive/iow_data/fahrten.2011/06EZ1108.DTA/vCTD/DATA/cnv/0001_01.cnv")
+#if __name__ == '__main__':
+#   # main()
+#   pc = test_pycnv2()
     
 

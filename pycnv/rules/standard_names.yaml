@@ -1,0 +1,16 @@
+names:
+    - name: C
+      channels: [ c0mS/cm, c1mS/cm ]
+      description: Salinity
+
+    - name: p
+      channels: [ prDM, pr]
+      description: Pressure
+
+    - name: T
+      channels: [ t090C, t190C ]
+      description: Temperature
+
+    - name: oxy
+      channels: [ sbeox0, sbeox1 ]
+      description: Oxygen
