@@ -399,6 +399,16 @@ class pycnv(object):
                         logger.debug('Found salinity 1 record')
                         self.data['sal11'] = data_ar[:,ind]
                         self.units['sal11'] = channel_name
+
+                    if('sbeox0' in channel_name):
+                        logger.debug('Found oxygen 0 record')
+                        self.data['oxy0'] = data_ar[:,ind]
+                        self.units['oxy0'] = channel_name
+
+                    if('sbeox1' in channel_name):
+                        logger.debug('Found oxygen 1 record')
+                        self.data['oxy1'] = data_ar[:,ind]
+                        self.units['oxy1'] = channel_name                                                
             else:
                 print('No data in the file')
                 return

@@ -15,7 +15,7 @@ setup(name='pycnv',
       packages=['pycnv'],
       scripts = ['pycnv/pycnv_sum_folder.py'],
       entry_points={ 'console_scripts': ['pycnv=pycnv.pycnv:main']},
-      package_data = {'':['VERSION','stations/stations.yaml']},
+      package_data = {'':['VERSION','stations/iow_stations.yaml','rules/standard_names.yaml']},
       zip_safe=False)
 
 

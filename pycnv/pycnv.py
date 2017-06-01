@@ -4,20 +4,22 @@ from numpy import *
 import logging
 import sys
 import argparse
+import pkg_resources
 import yaml
-    
+
+standard_name_file = pkg_resources.resource_filename('pycnv', 'rules/standard_names.yaml')    
 
 # TODO: add NMEA position, time
 
 # Setup logging module
 logging.basicConfig(stream=sys.stderr, level=logging.WARNING)
-logger = logging.getLogger('pycnv2')
+logger = logging.getLogger('pycnv')
 
 
 try:
     import gsw
 except:
-    logger.warning('Could not install the Gibbs Seawater toolbox')
+    logger.warning('Could not load the Gibbs Seawater toolbox')
 
 
 
@@ -53,11 +55,166 @@ def date_correction(tag, monat, jahr):
         return datstr
     except Exception as e:
         logger.warning(' Could not convert date: ' + str(e))
-        return None
+        return None    
 
 
+def parse_iow_header(header):
+    """
+    Parsing the header for iow_data and saving it into a structure
+    """
+    iow_data = {}
+    for line in header.splitlines():
+        #print line
+        if  "Startzeit" in line:
+            # ** Startzeit= 13:13:15 25-Sep-07
+            line_orig = line
+            #print(line)
+            try:
+                line = line.replace("\n","").replace("\r","")
+                line = line.split("=")     
+                line = line[1]
+                line = line.replace("  "," ")
+                while(line[0] == " "):
+                    line = line[1:]
 
-class pycnv2(object):
+                line_split = line.split(" ")
+                # Get datum
+                datum_split = line_split[1].split("-")
+                tag = datum_split[0]
+                monat = datum_split[1]            
+                jahr = datum_split[2]
+                if(len(jahr) == 2):
+                    jahr = '20' + jahr
+
+                #print(line)
+                datum_start = date_correction(tag, monat, jahr)
+
+
+                # get time
+                zeit_start = line_split[0]
+                try:
+                    iow_data['date'] = datetime.datetime.strptime(datum_start + zeit_start,'%Y-%m-%d%H:%M:%S')
+                    iow_data['date'].replace(tzinfo=timezone('UTC'))
+                except:
+                    iow_data['date'] = None                        
+            except Exception as e:
+                logger.warning('Startzeit parsing error:' + str(e))
+                logger.warning('Startzeit str:' + line_orig)
+
+        ###### Meta-Daten der Reise und Station
+        elif "ReiseNr" in line:
+            line = line.split("=")
+            reise = line[1]
+            reise = reise.replace(" ","")
+            reise = reise.replace("\n","").replace("\r","")
+            iow_data['reise'] = reise
+            # print("Reise: %s" % reise)
+        elif "StatBez" in line:
+            line = line.split("=")
+            station_bez = line[1]
+            # station_bez = station_bez.replace(" ","")
+            station_bez = station_bez.replace("\n","").replace("\r","")
+            iow_data['station'] = station_bez
+            # print("Station: %s" % station_bez)
+        elif "EinsatzNr" in line:
+            line = line.split("=")
+            einsatz_nr = line[1]
+            einsatz_nr = einsatz_nr.replace(" ","")
+            einsatz_nr = einsatz_nr.replace("\n","").replace("\r","")
+            iow_data['einsatz'] = einsatz_nr
+            # print("Einsatz: %s" % einsatz_nr)
+
+        elif "Echolote" in line:
+
+            line = line.split("=")
+            try:
+                echo0 = float(line[1].split('m')[0])
+            except Exception as e:
+                logger.warning('IOW:Echolot:' + str(e))
+                echo0 = None
+
+            try:
+                echo1 = float(line[1].split('m')[1])
+            except Exception as e:
+                logger.warning('IOW:Echolot:' + str(e))
+                echo1 = None                
+
+            iow_data['echo'] = (echo0,echo1)
+                
+            # print("Einsatz: %s" % einsatz_nr)            
+        elif "SerieNr" in line and "Operator" in line:
+            line_orig = line
+            line.replace("\n","").replace("\r","")
+            line = line.split()
+            try:
+                serie_nr = line[3]
+            except Exception as e:
+                logger.warning('SerieNr parsing error:' + str(e))
+                logger.warning('str:' + line_orig)
+
+            try:                
+                operator = line[5]
+            except Exception as e:
+                logger.warning('Operator parsing error:' + str(e))
+                logger.warning('str:' + line_orig)
+
+            # print("Serie: %s" % serie_nr)
+            # print("Operator: %s" % operator)
+            iow_data['serie'] = serie_nr
+            iow_data['operator'] = operator
+        elif "GPS_Posn" in line:
+            try:
+
+                pos_str = line.rsplit('=')[1]
+                pos_str = pos_str.replace("\n","").replace("\r","") 
+                if("S" in pos_str):
+                    SIGN_NORTH = -1.
+                    CHAR_NORTH = 'S'
+                if("N" in pos_str):
+                    SIGN_NORTH = 1.
+                    CHAR_NORTH = 'N'                
+
+                if("E" in pos_str):
+                    SIGN_WEST = 1.0
+                    CHAR_WEST = 'E'
+                if("W" in pos_str):
+                    SIGN_WEST = -1.0
+                    CHAR_WEST = 'W'
+
+                pos_str = pos_str.replace("N","")
+                pos_str = pos_str.replace("S","")
+                pos_str = pos_str.replace("E","")
+                pos_str = pos_str.replace("W","")
+                pos_str = pos_str.replace("  "," ")
+                pos_str = pos_str.split()
+                while(pos_str[0] == " "):
+                        pos_str = pos_str[1:]
+
+
+                latitude = ("%s %s" % (pos_str[0],pos_str[1]))
+                longitude = ("%s %s" % (pos_str[2],pos_str[3]))
+                latitude += CHAR_NORTH
+                longitude += CHAR_WEST
+                # Convert to floats
+                lon = SIGN_WEST * float(longitude.split()[0]) + float(longitude.split()[1][:-1])/60.
+                lat = SIGN_NORTH * float(latitude.split()[0]) + float(latitude.split()[1][:-1])/60.
+
+            except Exception as e:
+                logger.warning('Could not get a valid position, setting it to unknown:' + str(e))
+                logger.warning('str:' + line)
+                logger.warning('pos str:' + str(pos_str))
+                latitude = 'unknown'
+                longitude = 'unknown'
+                lat = NaN
+                lon = NaN
+                
+            iow_data['lat'] = lat
+            iow_data['lon'] = lon
+
+    return iow_data
+
+
+class pycnv(object):
     """
 
     A Seabird cnv parsing object.
@@ -72,7 +229,7 @@ class pycnv2(object):
        >>>plot(cnv.derived['SA00']
     
     """
-    def __init__(self,filename, only_metadata = False,verbosity = logging.INFO):
+    def __init__(self,filename, only_metadata = False,verbosity = logging.INFO, naming_rules = standard_name_file ):
         """
         """
         logger.setLevel(verbosity)
@@ -84,8 +241,12 @@ class pycnv2(object):
         # Find the header and store it
         header = self.get_header(raw)
         self.parse_header()
-        # Trying to extract standard names (p,C,S,T,oxy ... ) from the channel names
-        self.
+        # Custom header information
+        self.iow = parse_iow_header(self.header)
+        self.lat = self.iow['lat']
+        self.lon = self.iow['lon']
+        # Trying to extract standard names (p, C, S, T, oxy ... ) from the channel names
+        self.get_standard_channel_names(naming_rules)
         
         self.get_data(raw)
 
@@ -99,14 +260,18 @@ class pycnv2(object):
             for n,c in enumerate(self.channels):
                 names.append(c['name'])
                 formats.append('float')
-                titles.append('c' + str(n))
+                titles.append(c['title'])
 
-            print(names)
+            # Create a new recarray with the names as in the header as
+            # the name and the standard names as the title
             self.data = zeros(shape(self.raw_data)[0],dtype={'names':names,'formats':formats,'titles':titles})
+            # Fill the recarray
             for n,c in enumerate(self.channels):
                 self.data[n] = self.raw_data[n,:]
 
             self.data = rec.array(self.data)
+            # Compute density with the gsw toolbox
+            
         else:
             logger.warning('Different number of columns in data section as defined in header, this is bad ...')
 
@@ -140,6 +305,16 @@ class pycnv2(object):
         Parses the header of the cnv file
         """
         for l in self.header.split('\n'):
+            if "System UpLoad Time" in l:
+                line     = l.split(" = ")
+                datum = line[1]
+                try:
+                    self.date = datetime.datetime.strptime(datum,'%b %d %Y %H:%M:%S')
+                    self.date.replace(tzinfo=timezone('UTC'))
+                except Exception as e:
+                    logger.warning('Could not decode time:' + str(e))
+                    self.date = None
+
             # Look for sensor names and units of type:
             # # name 4 = t090C: Temperature [ITS-90, deg C]
             if "# name" in l:
@@ -147,6 +322,7 @@ class pycnv2(object):
                 sensor = {}
                 sensor['index'] = int(lsp[0].split('name')[-1])
                 sensor['name'] = lsp[1].split(': ')[0]
+                sensor['title'] = 'i' + str(sensor['index'])
                 sensor['long_name'] = lsp[1].split(': ')[1]
                 unit = lsp[1].split(': ')[1]
                 if len(unit.split('[')) > 1 :
@@ -157,13 +333,31 @@ class pycnv2(object):
                     sensor['unit'] = None
 
                 self.channels.append(sensor)
-
+        
+        
     def get_standard_channel_names(self, naming_rules):
         """
         Look through a list of rules to try to link names to standard names
         """
+        f = open(naming_rules)
+        rules = yaml.safe_load(f)
+        print('Hallo!')
+        found = False
+        for r in rules['names']:
+            logger.debug('Looking for rule for ' + r['description'])
+            for c in r['channels']:
+                if(found == True):
+                    found = False
+                    break
+                for ct in self.channels:
+                    if(ct['name'] in c):
+                        ct['title'] = r['name']
+                        print('Found channel',ct,c)
+                        found = True
+                        break
+    
         
-        
+        #print('Channels',self.channels)
         
     def get_data(self,raw):
         """
@@ -178,7 +372,6 @@ class pycnv2(object):
             #data.append (line)
             nline += 1
             try:
-
                 ldata = asarray(l,dtype='float')
                 # Get the number of columns with the first line
                 if(nline == 1):
@@ -192,10 +385,66 @@ class pycnv2(object):
 
             
         self.raw_data = asarray(data)
+
+    def get_summary(self,header=False):
+        """
+        Returns a summary of the cnv file in a csv format
+        Args:
+           header: Returns header only
+        """
+        
+        sep = ','
+        rstr = ""        
+        if(header):
+            rstr += 'Date,'
+            rstr += 'Lat,'
+            rstr += 'Lon,'
+            rstr += 'p min,'
+            rstr += 'p max,'
+            rstr += 'num p samples,'            
+            rstr += 'file,'            
+        else:
+            try:
+                rstr += datetime.datetime.strftime(self.date,'%Y-%m-%d %H:%M:%S') + sep
+            except: 
+                rstr += 'NaN' + sep
+            rstr += str(self.lat) + sep
+            rstr += str(self.lon) + sep
+            pmin = NaN
+            pmax = NaN
+            num_samples = NaN                    
+            if(self.data != None):
+                #print(self.data)
+                try:
+                    pmin = self.data['p'].min()
+                    pmax = self.data['p'].max()
+                    num_samples = len(self.data['p'])
+                except Exception as e:
+                    pass
+
+                                 
+            rstr += str(pmin) + sep
+            rstr += str(pmax) + sep
+            rstr += str(num_samples) + sep                
+            rstr += self.filename + sep
+                
+        return rstr
+
+
+    def __str__(self):
+        """
+        String format
+        """
+        rstr = ""
+        rstr += "pycnv of " + self.filename
+        rstr += " at Lat: " + str(self.header['lat'])
+        rstr += ", Lon: " + str(self.header['lon'])
+        rstr += ", Date: " + datetime.datetime.strftime(self.header['date'],'%Y-%m-%d %H:%M:%S')
+        return rstr        
             
           
-def test_pycnv2():
-    pycnv2("/home/holterma/data/redox_drive/iow_data/fahrten.2011/06EZ1108.DTA/vCTD/DATA/cnv/0001_01.cnv")
+def test_pycnv():
+    pycnv("/home/holterma/data/redox_drive/iow_data/fahrten.2011/06EZ1108.DTA/vCTD/DATA/cnv/0001_01.cnv")
 
 # Main function
 def main():
@@ -241,9 +490,9 @@ def main():
         print(summary)
 
 
-pc = pycnv2("/home/holterma/data/redox_drive/iow_data/fahrten.2011/06EZ1108.DTA/vCTD/DATA/cnv/0001_01.cnv")
+pc = pycnv("/home/holterma/data/redox_drive/iow_data/fahrten.2011/06EZ1108.DTA/vCTD/DATA/cnv/0001_01.cnv")
 #if __name__ == '__main__':
 #   # main()
-#   pc = test_pycnv2()
+#   pc = test_pycnv()
     
 
