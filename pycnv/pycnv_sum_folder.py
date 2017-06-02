@@ -21,7 +21,7 @@ except:
 logging.basicConfig(stream=sys.stderr, level=logging.WARNING)
 logger = logging.getLogger('pycnv_sum_folder')
 
-desc             = 'A pycnv tool which is recursively searching through the given data_path and searching for cnv files. Found cnv files are parsed and a summary is written to the file given with --filename'
+desc             = 'A pycnv tool which is recursively searching through the given data_path and searching for cnv files. Found cnv files are parsed and a summary is written to the file given by --filename'
 data_help        = 'The data path(es) to be searched'
 file_help        = 'The filename the results are written to'
 dist_help        = 'Only take files which are within a distance to CTD location'
@@ -104,7 +104,7 @@ if(args.list_stations or args.station != None):
         sname_tmp = args.station[0]
     else:
         sname_tmp = None
-    stations_file = pkg_resources.resource_filename('pycnv', 'stations/stations.yaml')
+    stations_file = pkg_resources.resource_filename('pycnv', 'stations/iow_stations.yaml')
     print('Stations file:',stations_file)
     f_stations = open(stations_file)
     # use safe_load instead load
@@ -180,6 +180,7 @@ for DATA_P in DATA_PATH:
 
 logger.info('Found ' + str(len(matches)) + ' cnv files in folder(s):' + str(DATA_PATH))
 
+
 save_file = []
 files_date = []
 if(len(matches) > 0):
@@ -194,24 +195,25 @@ if(len(matches) > 0):
     for i,f in enumerate(matches):
         logger.debug('Parsing file: ' + str(f))
         cnv = pycnv.pycnv(f,verbosity=loglevel)
-        files_date.append(cnv.header['date'])
-        summary = cnv.get_summary()
-        
-        FLAG_GOOD = False
-        if(FLAG_DIST):
-            lon = cnv.header['lon']
-            lat = cnv.header['lat']
-            if(not(isnan(lon)) and not(isnan(lat))):
-                az12,az21,dist = g.inv(lon,lat,londist,latdist)
-                if(dist < distdist):
-                    FLAG_GOOD = True
-        else:
-            FLAG_GOOD = True
+        if(cnv.valid_cnv):
+            files_date.append(cnv.date)
+            summary = cnv.get_summary()
 
-        if(FLAG_GOOD):
-            save_file.append(True)
-        else:
-            save_file.append(False)
+            FLAG_GOOD = False
+            if(FLAG_DIST):
+                lon = cnv.header['lon']
+                lat = cnv.header['lat']
+                if(not(isnan(lon)) and not(isnan(lat))):
+                    az12,az21,dist = g.inv(lon,lat,londist,latdist)
+                    if(dist < distdist):
+                        FLAG_GOOD = True
+            else:
+                FLAG_GOOD = True
+
+            if(FLAG_GOOD):
+                save_file.append(True)
+            else:
+                save_file.append(False)
 
     # Save the with respect to date sorted file
     logger.debug('Writing file')

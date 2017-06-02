@@ -235,12 +235,21 @@ class pycnv(object):
         logger.setLevel(verbosity)
         logger.info(' Opening file: ' + filename)
         self.filename = filename
-        self.channels = []     
+        self.channels = []
+        self.data = None
         # Opening file for read
         raw = open(self.filename, "r")
         # Find the header and store it
         header = self.get_header(raw)
         self.parse_header()
+        # Check if we found channels
+        # If yes we have a valid cnv file
+        if(len(self.channels) == 0):
+            logger.critical('Did not find any channels in file: ' + filename + ', exiting (No cnv file?)')
+            self.valid_cnv = False
+            return
+            
+            
         # Custom header information
         self.iow = parse_iow_header(self.header)
         self.lat = self.iow['lat']
@@ -250,30 +259,38 @@ class pycnv(object):
         
         self.get_data(raw)
 
+        nrec = shape(self.raw_data)[0]
         # Check if the dimensions are right
-        if( shape(self.raw_data)[1] == len(self.channels) ):
-            # Make a recarray out of the array
-            names   = []
-            formats = []
-            titles  = []
-            # Name the columns after the channel names
-            for n,c in enumerate(self.channels):
-                names.append(c['name'])
-                formats.append('float')
-                titles.append(c['title'])
+        if(shape(self.raw_data)[0] > 0):
+            if( shape(self.raw_data)[1] == len(self.channels) ):
+                # Make a recarray out of the array
+                names   = []
+                formats = []
+                titles  = []
+                # Name the columns after the channel names
+                for n,c in enumerate(self.channels):
+                    names.append(c['name'])
+                    formats.append('float')
+                    titles.append(c['title'])
 
-            # Create a new recarray with the names as in the header as
-            # the name and the standard names as the title
-            self.data = zeros(shape(self.raw_data)[0],dtype={'names':names,'formats':formats,'titles':titles})
-            # Fill the recarray
-            for n,c in enumerate(self.channels):
-                self.data[n] = self.raw_data[n,:]
+                # Create a new recarray with the names as in the header as
+                # the name and the standard names as the title
+                self.data = zeros(shape(self.raw_data)[0],dtype={'names':names,'formats':formats,'titles':titles})
+                # Fill the recarray
+                #for n,c in enumerate(self.channels):
+                for n in range(nrec):
+                    self.data[n] = self.raw_data[n,:]
 
-            self.data = rec.array(self.data)
-            # Compute density with the gsw toolbox
-            
+                self.data = rec.array(self.data)
+                # Compute density with the gsw toolbox
+
+            else:
+                logger.warning('Different number of columns in data section as defined in header, this is bad ...')
         else:
-            logger.warning('Different number of columns in data section as defined in header, this is bad ...')
+            logger.warning('No data in file')
+
+            
+        self.valid_cnv = True
 
         
     def get_header(self,raw):
@@ -322,14 +339,26 @@ class pycnv(object):
                 sensor = {}
                 sensor['index'] = int(lsp[0].split('name')[-1])
                 sensor['name'] = lsp[1].split(': ')[0]
+                # Test if we have already the name (no double names
+                # are allowed later in the recarray struct
+                for c,s in enumerate(self.channels):
+                    if(s['name'] == sensor['name']):
+                        sensor['name'] = sensor['name'] + '@' + str(c)
+
+                # Add a dummy title, this will be later filled with a
+                # useful name
                 sensor['title'] = 'i' + str(sensor['index'])
-                sensor['long_name'] = lsp[1].split(': ')[1]
-                unit = lsp[1].split(': ')[1]
-                if len(unit.split('[')) > 1 :
-                    unit = unit.split('[')[1]
-                    unit = unit.split("]")[0]
-                    sensor['unit'] = unit
+                if(len(lsp[1].split(': ')) > 1): # if we have a long name and unit
+                    sensor['long_name'] = lsp[1].split(': ')[1]
+                    unit = lsp[1].split(': ')[1]
+                    if len(unit.split('[')) > 1 :
+                        unit = unit.split('[')[1]
+                        unit = unit.split("]")[0]
+                        sensor['unit'] = unit
+                    else:
+                        sensor['unit'] = None
                 else:
+                    sensor['long_name'] = None
                     sensor['unit'] = None
 
                 self.channels.append(sensor)
@@ -341,7 +370,6 @@ class pycnv(object):
         """
         f = open(naming_rules)
         rules = yaml.safe_load(f)
-        print('Hallo!')
         found = False
         for r in rules['names']:
             logger.debug('Looking for rule for ' + r['description'])
@@ -352,7 +380,7 @@ class pycnv(object):
                 for ct in self.channels:
                     if(ct['name'] in c):
                         ct['title'] = r['name']
-                        print('Found channel',ct,c)
+                        #print('Found channel',ct,c)
                         found = True
                         break
     
@@ -408,11 +436,18 @@ class pycnv(object):
                 rstr += datetime.datetime.strftime(self.date,'%Y-%m-%d %H:%M:%S') + sep
             except: 
                 rstr += 'NaN' + sep
-            rstr += str(self.lat) + sep
-            rstr += str(self.lon) + sep
+
+            try:
+                rstr += '{:03.6f}'.format(self.lat) + sep
+                rstr += '{:03.6f}'.format(self.lon) + sep
+                
+
+            except:
+                rstr += 'NaN' + sep
+                rstr += 'NaN' + sep
             pmin = NaN
             pmax = NaN
-            num_samples = NaN                    
+            num_samples = 0                    
             if(self.data != None):
                 #print(self.data)
                 try:
@@ -423,9 +458,9 @@ class pycnv(object):
                     pass
 
                                  
-            rstr += str(pmin) + sep
-            rstr += str(pmax) + sep
-            rstr += str(num_samples) + sep                
+            rstr += '{: 6.2f}'.format(pmin) + sep
+            rstr += '{: 6.2f}'.format(pmax) + sep
+            rstr += '{: 6d}'.format(num_samples) + sep                
             rstr += self.filename + sep
                 
         return rstr

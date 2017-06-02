@@ -155,6 +155,8 @@ stations:
 - latitude: 55.25
   longitude: 15.983333
   name: TF0213
+  alternative_names: [BMPK02]
+  description: Central Bornholm Basin  
 - latitude: 55.16
   longitude: 15.66
   name: TF0214
@@ -338,6 +340,8 @@ stations:
 - latitude: 57.32
   longitude: 20.05
   name: TF0271
+  alternative_names: [BY15, BMPJ01, C1]
+  description: Central Gotland Basin
 - latitude: 57.071667
   longitude: 19.83
   name: TF0272
