@@ -451,7 +451,7 @@ def main():
     sum_help = 'Gives a csv compatible summary'
     sumhead_help = 'Gives the header to the csv compatible summary'
     parser = argparse.ArgumentParser()
-    parser.add_argument('--filename', '-f')    
+    parser.add_argument('filename')    
     parser.add_argument('--summary', '-s', action='store_true', help=sum_help)
     parser.add_argument('--summary_header', '-sh', action='store_true', help=sumhead_help)
     parser.add_argument('--verbose', '-v', action='count')
@@ -480,7 +480,8 @@ def main():
         cnv = pycnv(filename,verbosity=loglevel)
         #print(cnv.data)
     else:
-        logger.critical('Need a filename')
+        #logger.critical('Need a filename')
+        print(parser.print_help())
 
     if(print_summary_header):
         summary = cnv.get_summary(header=True)
@@ -490,9 +491,8 @@ def main():
         print(summary)
 
 
-pc = pycnv("/home/holterma/data/redox_drive/iow_data/fahrten.2011/06EZ1108.DTA/vCTD/DATA/cnv/0001_01.cnv")
-#if __name__ == '__main__':
-#   # main()
-#   pc = test_pycnv()
+#pc = pycnv("/home/holterma/data/redox_drive/iow_data/fahrten.2011/06EZ1108.DTA/vCTD/DATA/cnv/0001_01.cnv")
+if __name__ == '__main__':
+   main()
     
 
