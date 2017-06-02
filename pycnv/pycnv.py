@@ -438,8 +438,8 @@ class pycnv(object):
                 rstr += 'NaN' + sep
 
             try:
-                rstr += '{:03.6f}'.format(self.lat) + sep
-                rstr += '{:03.6f}'.format(self.lon) + sep
+                rstr += '{:03.5f}'.format(self.lat) + sep
+                rstr += '{:03.5f}'.format(self.lon) + sep
                 
 
             except:
