@@ -322,14 +322,14 @@ class pycnv(object):
         Parses the header of the cnv file
         """
         for l in self.header.split('\n'):
-            if "System UpLoad Time" in l:
+            if "* System UpLoad Time" in l:
                 line     = l.split(" = ")
                 datum = line[1]
                 try:
                     self.date = datetime.datetime.strptime(datum,'%b %d %Y %H:%M:%S')
                     self.date.replace(tzinfo=timezone('UTC'))
                 except Exception as e:
-                    logger.warning('Could not decode time:' + str(e))
+                    logger.warning('Could not decode time: ( ' + datum + ' )' + str(e))
                     self.date = None
 
             # Look for sensor names and units of type:
@@ -408,7 +408,7 @@ class pycnv(object):
                 if(len(ldata) == ncols):
                     data.append(ldata)
             except Exception as e:
-                logger.warning('Could not convert data to floats in line:' + str(nl))
+                logger.warning('Could not convert data to floats in line:' + str(nline))
                 logger.debug('str:' + line_orig)
 
             
@@ -458,8 +458,8 @@ class pycnv(object):
                     pass
 
                                  
-            rstr += '{: 6.2f}'.format(pmin) + sep
-            rstr += '{: 6.2f}'.format(pmax) + sep
+            rstr += '{: 8.2f}'.format(pmin) + sep
+            rstr += '{: 8.2f}'.format(pmax) + sep
             rstr += '{: 6d}'.format(num_samples) + sep                
             rstr += self.filename + sep
                 

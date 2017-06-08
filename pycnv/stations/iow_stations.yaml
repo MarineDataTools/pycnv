@@ -277,12 +277,16 @@ stations:
 - latitude: 58.583333
   longitude: 18.233333
   name: TF0284
+  alternative_names: [BMPH03]
+  description: Landsort Deep
 - latitude: 58.441667
   longitude: 20.333333
   name: TF0285
 - latitude: 58.0
   longitude: 19.9
   name: TF0286
+  alternative_names: [BMPJ03]
+  description: Faroe Deep
 - latitude: 56.116667
   longitude: 16.533333
   name: TF223

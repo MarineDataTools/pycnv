@@ -21,7 +21,11 @@ except:
 logging.basicConfig(stream=sys.stderr, level=logging.WARNING)
 logger = logging.getLogger('pycnv_sum_folder')
 
-desc             = 'A pycnv tool which is recursively searching through the given data_path and searching for cnv files. Found cnv files are parsed and a summary is written to the file given by --filename'
+example1 = 'Example (searching in folders fahrten.2011 and fahrten.2012 for stations TF0286 within a radius of 5000m: pycnv_sum_folder.py -d fahrten.201[12]/ -f tf286.txt --station TF0286 5000'
+
+desc             = 'A pycnv tool which is recursively searching through the given data_path and searching for cnv files. Found cnv files are parsed and a summary is written to the file given by --filename.'
+desc += example1
+
 data_help        = 'The data path(es) to be searched'
 file_help        = 'The filename the results are written to'
 dist_help        = 'Only take files which are within a distance to CTD location'
@@ -181,8 +185,10 @@ for DATA_P in DATA_PATH:
 logger.info('Found ' + str(len(matches)) + ' cnv files in folder(s):' + str(DATA_PATH))
 
 
-save_file = []
+save_file  = []
 files_date = []
+file_names_save = []
+files_date_save = []
 if(len(matches) > 0):
     # Write the header of the file
     cnv = pycnv.pycnv(matches[0],verbosity=logging.CRITICAL)
@@ -198,34 +204,39 @@ if(len(matches) > 0):
         if(cnv.valid_cnv):
             files_date.append(cnv.date)
             summary = cnv.get_summary()
-
             FLAG_GOOD = False
+            # Check if we are within a distance
             if(FLAG_DIST):
-                lon = cnv.header['lon']
-                lat = cnv.header['lat']
+                lon = cnv.lon
+                lat = cnv.lat
                 if(not(isnan(lon)) and not(isnan(lat))):
                     az12,az21,dist = g.inv(lon,lat,londist,latdist)
                     if(dist < distdist):
                         FLAG_GOOD = True
+                        
             else:
                 FLAG_GOOD = True
 
             if(FLAG_GOOD):
                 save_file.append(True)
+                file_names_save.append(f)
+                files_date_save.append(cnv.date)
             else:
                 save_file.append(False)
 
     # Save the with respect to date sorted file
     logger.debug('Writing file')
-    ind_sort = argsort(files_date)
+    ind_sort = argsort(files_date_save)
     num_wr = 0
     for ind in ind_sort:
-        FLAG_GOOD = save_file[ind]
-        if(FLAG_GOOD):
-            cnv = pycnv.pycnv(matches[ind],verbosity=logging.CRITICAL)    
+        #FLAG_GOOD = save_file[ind]
+        #if(FLAG_GOOD):
+            #cnv = pycnv.pycnv(matches[ind],verbosity=logging.CRITICAL)
+        if True:
+            cnv = pycnv.pycnv(file_names_save[ind],verbosity=logging.CRITICAL)                
             summary = cnv.get_summary()
             if(print_summary):
-                print(summary)        
+                print(summary)
             if(filename != None):
                 fi.write(summary)
                 fi.write('\n')
@@ -235,6 +246,7 @@ if(len(matches) > 0):
 
 else:
     print('No files found ... ')
+
 
 if(filename != None):
     logger.info('Wrote ' +str(num_wr) + ' datasets into file:' + filename)
