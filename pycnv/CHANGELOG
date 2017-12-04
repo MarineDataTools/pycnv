@@ -1,0 +1,3 @@
+0.3.1:
+	- added pycnv.regions_baltic for testing of CTD cast is in the Baltic
+	- added a conversion of IPTS-68 to T90 and S7m to mS/cm

@@ -15,6 +15,35 @@ standard_name_file = pkg_resources.resource_filename('pycnv', 'rules/standard_na
 logging.basicConfig(stream=sys.stderr, level=logging.WARNING)
 logger = logging.getLogger('pycnv')
 
+# Regions to test if we are in the Baltic Sea for different equation of state
+regions_baltic = [[[  9.4,  13.4],[ 53.9,  56.3]]]
+regions_baltic.append([[ 13.3,  17.],[ 53.4,  56.3]])
+regions_baltic.append([[ 15.9,  24.6],[ 54.2,  60.2 ]])
+regions_baltic.append([[ 24.3,  30.4],[ 59.1,  60.8]])
+regions_baltic.append([[ 16.8,  23.3],[ 60.1,  63.3]])
+regions_baltic.append([[ 18.8,  25.6],[ 63.1,  66.2]])
+
+def check_baltic(lon,lat):
+    """
+    Functions checks if position with lon,lat is in the Baltic Sea
+    Args:
+       lon: Longitude
+       lat: Latitude
+    Returns:
+       baltic: True: In Baltic, False: not in Baltic
+    """
+    if(lon == None or lon == NaN or lat == None or lat == NaN):
+        return False
+    
+    for i in range(len(regions_baltic)):
+        lonb = regions_baltic[i][0]
+        latb = regions_baltic[i][1]
+        if((lon > lonb[0]) and (lon < lonb[1])):
+            if((lat > latb[0]) and (lat < latb[1])):
+                return True
+
+    return False
+
 
 try:
     import gsw
@@ -224,12 +253,17 @@ class pycnv(object):
     Usage:
        >>>filename='test.cnv'
        >>>cnv = pycnv(filename)
-       >>># Derive absolute salinity and conservative temperature from in situ temperature and conductivity
-       >>>cnv.derive('ST')
-       >>>plot(cnv.derived['SA00']
+
+    Args:
+       filename:
+       only_metadata:
+       verbosity:
+       naming_rules:
+       encoding:
+       baltic: Flag if the cast was in the Baltic Sea. None: Automatic check based on parsed lat/lon and the regions definded in pycnv.regions_baltic, True: cast is in Baltic, False: cast is not in Baltic. If cast is in Baltic the gsw equation of state for the Baltic Sea will be used.
     
     """
-    def __init__(self,filename, only_metadata = False,verbosity = logging.INFO, naming_rules = standard_name_file ):
+    def __init__(self,filename, only_metadata = False,verbosity = logging.INFO, naming_rules = standard_name_file,encoding='latin-1',baltic=None ):
         """
         """
         logger.setLevel(verbosity)
@@ -237,11 +271,14 @@ class pycnv(object):
         self.filename = filename
         self.channels = []
         self.data = None
+        self.lon = None
+        self.lat = None        
         # Opening file for read
-        raw = open(self.filename, "r")
+        raw = open(self.filename, "r",encoding=encoding)
+        #print('Hallo!',raw)
         # Find the header and store it
-        header = self.get_header(raw)
-        self.parse_header()
+        header = self._get_header(raw)
+        self._parse_header()
         # Check if we found channels
         # If yes we have a valid cnv file
         if(len(self.channels) == 0):
@@ -252,14 +289,29 @@ class pycnv(object):
             
         # Custom header information
         self.iow = parse_iow_header(self.header)
-        self.lat = self.iow['lat']
-        self.lon = self.iow['lon']
-        # Trying to extract standard names (p, C, S, T, oxy ... ) from the channel names
-        self.get_standard_channel_names(naming_rules)
-        
-        self.get_data(raw)
+        try:
+            self.lat = self.iow['lat']
+            self.lon = self.iow['lon']
+        except:
+            pass
 
-        nrec = shape(self.raw_data)[0]
+            
+            
+        # Trying to extract standard names (p, C, S, T, oxy ... ) from the channel names
+        self._get_standard_channel_names(naming_rules)
+        
+        self._get_data(raw)
+        # Check if we are in the Baltic Sea
+        if(baltic == None):
+            self.baltic= check_baltic(self.lon,self.lat)
+        else:
+            self.baltic = baltic
+            
+        nrec           = shape(self.raw_data)[0]
+        self.units     = {}
+        self.names     = {}
+        self.names_std = {}
+        self.units_std = {}        
         # Check if the dimensions are right
         if(shape(self.raw_data)[0] > 0):
             if( shape(self.raw_data)[1] == len(self.channels) ):
@@ -272,6 +324,11 @@ class pycnv(object):
                     names.append(c['name'])
                     formats.append('float')
                     titles.append(c['title'])
+                    self.names[c['name']] = c['long_name']
+                    self.units[c['name']] = c['unit']
+                    self.names_std[c['title']] = c['long_name']
+                    self.units_std[c['title']] = c['unit']
+                    
 
                 # Create a new recarray with the names as in the header as
                 # the name and the standard names as the title
@@ -281,21 +338,112 @@ class pycnv(object):
                 for n in range(nrec):
                     self.data[n] = self.raw_data[n,:]
 
-                self.data = rec.array(self.data)
-                # Compute density with the gsw toolbox
+                self.data   = rec.array(self.data)
+                # Compute absolute salinity and potential density with the gsw toolbox
+                # check if we have enough data to compute
+                self.cdata  = None
+                self.cunits = {}
+                self.cnames = {}
+                try:
+                    self.data['C0']
+                    self.data['T0']
+                    self.data['p']
+                    FLAG_COMPUTE0 = True
+                except:
+                    FLAG_COMPUTE0 = False
 
+                try:
+                    self.data['C1']
+                    self.data['T1']
+                    self.data['p']
+                    FLAG_COMPUTE1 = True
+                except:
+                    FLAG_COMPUTE1 = False                    
+
+                if FLAG_COMPUTE0:
+                    if(not((self.lon == None) or (self.lat == None))):
+                        compdata    = self._compute_data(self.data, self.units_std, self.names_std, baltic=baltic,lon=self.lon, lat=self.lat,isen='0')
+                    else:
+                        compdata    = self._compute_data(self.data, self.units_std, self.names_std, baltic=baltic,isen = '0')
+
+
+                    self.cdata = compdata[0]
+                    self.cunits.update(compdata[1])
+                    self.cnames.update(compdata[2])
+                else:
+                    logger.info('Not computing data using the gsw toolbox, as we dont have the three standard parameters (C0,T0,p0)')
+
+                if FLAG_COMPUTE1:
+                    if(not((self.lon == None) or (self.lat == None))):
+                        compdata    = self._compute_data(self.data, self.units_std, self.names_std, baltic=baltic,lon=self.lon, lat=self.lat,isen='1')
+                    else:
+                        compdata    = self._compute_data(self.data,self.units_std, self.names_std, baltic=baltic,isen = '0')
+
+                    self.cdata.update(compdata[0])
+                    self.cunits.update(compdata[1])
+                    self.cnames.update(compdata[2])
+                else:
+                    logger.info('Not computing data using the gsw toolbox, as we dont have the three standard parameters (C1,T1,p)')
             else:
                 logger.warning('Different number of columns in data section as defined in header, this is bad ...')
         else:
             logger.warning('No data in file')
-
+            
             
         self.valid_cnv = True
-
         
-    def get_header(self,raw):
+        
+    def _compute_data(self,data, units, names, p_ref = 0, baltic = False, lon=0, lat=0, isen = '0'):
+        """ Computes convservative temperature, absolute salinity and potential density from input data, expects a recarray with the following entries data['C']: conductivity in mS/cm, data['T']: in Situ temperature in degree Celsius (ITS-90), data['p']: in situ sea pressure in dbar
+        
+        Arguments:
+           p_ref: Reference pressure for potential density
+           baltic: if True use the Baltic Sea density equation instead of open ocean
+           lon: Longitude of ctd cast default=0
+           lat: Latitude of ctd cast default=0
+        Returns:
+           list [cdata,cunits,cnames] with cdata: recarray with entries 'SP', 'SA', 'pot_rho', cunits: dictionary with units, cnames: dictionary with names 
         """
-        Loops through lines and looks for header. It removes all \r leaving only \n for newline and saves the header in self.header as a string
+        sen = isen + isen
+        # Check for units and convert them if neccessary
+        if(units['C' + isen] == 'S/m'):
+            logger.info('Converting conductivity units from S/m to mS/cm')
+            Cfac = 10
+
+        if(('68' in units['T' + isen]) or ('68' in names['T' + isen]) ):
+            logger.info('Converting IPTS-68 to T90')
+            T = gsw.t90_from_t68(data['T' + isen])
+        else:
+            T = data['T' + isen]
+            
+        SP = gsw.SP_from_C(data['C' + isen], T, data['p'])
+        SA = gsw.SA_from_SP(SP,data['p'],lon = lon, lat = lat)
+        if(baltic == True):
+            SA = gsw.SA_from_SP_Baltic(SA,lon = lon, lat = lat)
+            
+        PT = gsw.pt0_from_t(SA, T, data['p'])
+        CT = gsw.CT_from_t(SA, T, data['p'])        
+        pot_rho          = gsw.pot_rho_t_exact(SA, T, data['p'], p_ref)
+        names            = ['SP' + sen,'SA' + sen,'pot_rho' + sen,'pt0' + sen,'CT' + sen]
+        formats          = ['float','float','float','float','float']        
+        cdata            = {}
+        cdata['SP' + sen]= SP
+        cdata['SA' + sen]= SA
+        cdata['pot_rho' + sen] = pot_rho
+        cdata['pt0' + sen]     = PT
+        cdata['CT' + sen]      = CT
+        cnames           = {'SA' + sen:'Absolute salinity','SP' + sen: 'Practical Salinity on the PSS-78 scale',
+                            'pot_rho' + sen: 'Potential density',
+                            'pt0' + sen:'potential temperature with reference sea pressure (p_ref) = 0 dbar',
+                            'CT' + sen:'Conservative Temperature (ITS-90)'}
+       
+        cunits = {'SA' + sen:'g/kg','SP' + sen:'PSU','pot_rho' + sen:'kg/m^3' ,'CT' + sen:'deg C','pt0' + sen:'deg C'}
+        
+        return [cdata,cunits,cnames]
+    
+    
+    def _get_header(self,raw):
+        """ Loops through lines and looks for header. It removes all \r leaving only \n for newline and saves the header in self.header as a string
         Args:
         Return:
             Line number of first data 
@@ -317,7 +465,8 @@ class pycnv(object):
 
         return nline
 
-    def parse_header(self):
+    
+    def _parse_header(self):
         """
         Parses the header of the cnv file
         """
@@ -364,15 +513,16 @@ class pycnv(object):
                 self.channels.append(sensor)
         
         
-    def get_standard_channel_names(self, naming_rules):
+    def _get_standard_channel_names(self, naming_rules):
         """
         Look through a list of rules to try to link names to standard names
         """
         f = open(naming_rules)
         rules = yaml.safe_load(f)
-        found = False
         for r in rules['names']:
-            logger.debug('Looking for rule for ' + r['description'])
+            found = False
+            #logger.debug('Looking for rule for ' + r['description'])
+            logger.debug('Looking for rule for ' + str(r['channels']) + '('+ r['description'] +')')            
             for c in r['channels']:
                 if(found == True):
                     found = False
@@ -380,16 +530,15 @@ class pycnv(object):
                 for ct in self.channels:
                     if(ct['name'] in c):
                         ct['title'] = r['name']
-                        #print('Found channel',ct,c)
+                        logger.debug('Found channel' + str(ct) + ' ' + str(c))
                         found = True
                         break
     
         
         #print('Channels',self.channels)
         
-    def get_data(self,raw):
-        """
-        Reads until the end of the file lines of data and puts them into one big numpy array
+    def _get_data(self,raw):
+        """ Reads until the end of the file lines of data and puts them into one big numpy array
         """
         data = []
         nline = 0
@@ -422,15 +571,18 @@ class pycnv(object):
         """
         
         sep = ','
-        rstr = ""        
+        rstr = ""
+        # Print the header
         if(header):
-            rstr += 'Date,'
-            rstr += 'Lat,'
-            rstr += 'Lon,'
-            rstr += 'p min,'
-            rstr += 'p max,'
-            rstr += 'num p samples,'            
-            rstr += 'file,'            
+            rstr += 'Date' + sep
+            rstr += 'Lat' + sep
+            rstr += 'Lon' + sep
+            rstr += 'p min' + sep
+            rstr += 'p max' + sep
+            rstr += 'num p samples' + sep
+            rstr += 'baltic' + sep
+            rstr += 'file'  + sep
+        # Print the file information
         else:
             try:
                 rstr += datetime.datetime.strftime(self.date,'%Y-%m-%d %H:%M:%S') + sep
@@ -460,7 +612,8 @@ class pycnv(object):
                                  
             rstr += '{: 8.2f}'.format(pmin) + sep
             rstr += '{: 8.2f}'.format(pmax) + sep
-            rstr += '{: 6d}'.format(num_samples) + sep                
+            rstr += '{: 6d}'.format(num_samples) + sep
+            rstr += '{: 1d}'.format(int(self.baltic)) + sep            
             rstr += self.filename + sep
                 
         return rstr
@@ -472,9 +625,9 @@ class pycnv(object):
         """
         rstr = ""
         rstr += "pycnv of " + self.filename
-        rstr += " at Lat: " + str(self.header['lat'])
-        rstr += ", Lon: " + str(self.header['lon'])
-        rstr += ", Date: " + datetime.datetime.strftime(self.header['date'],'%Y-%m-%d %H:%M:%S')
+        rstr += " at Lat: " + str(self.lat)
+        rstr += ", Lon: " + str(self.lon)
+        rstr += ", Date: " + datetime.datetime.strftime(self.date,'%Y-%m-%d %H:%M:%S')
         return rstr        
             
           
@@ -513,16 +666,16 @@ def main():
     
     if(filename != None):
         cnv = pycnv(filename,verbosity=loglevel)
-        #print(cnv.data)
+        print(cnv)
     else:
         #logger.critical('Need a filename')
         print(parser.print_help())
 
     if(print_summary_header):
-        summary = cnv.get_summary(header=True)
+        summary = cnv._get_summary(header=True)
         print(summary)
     if(print_summary):
-        summary = cnv.get_summary()
+        summary = cnv._get_summary()
         print(summary)
 
 

@@ -1,16 +1,41 @@
+# Here the specific names in the cnv are mapped to standard names
+# The first existing name in the channels is used for linking
+# Doing a ctd = pycnv.pycnv('data.cnv')
+# Temperature data can be accessed by ctd.data['T'] or ctd.data['t090C']
+
 names:
-    - name: C
-      channels: [ c0mS/cm, c1mS/cm ]
-      description: Salinity
+    - name: C0
+      channels: [ c0mS/cm, c0 ]
+      #channels: [ c0mS/cm ]
+      description: Conductivity sensor 0
+
+    - name: C1
+      channels: [ c1mS/cm, c1 ]
+      #channels: [ c1mS/cm ]
+      description: Conductivity sensor 1
 
     - name: p
-      channels: [ prDM, pr]
+      channels: [ prDM, pr ]
       description: Pressure
 
-    - name: T
-      channels: [ t090C, t190C ]
-      description: Temperature
+    - name: T0
+      channels: [ t090C, t068 ]
+      #channels: [ t090C ]
+      description: Temperature sensor 0
 
-    - name: oxy
-      channels: [ sbeox0, sbeox1 ]
-      description: Oxygen
+    - name: T1
+      channels: [ t190C, t168 ]
+      #channels: [ t190C ]
+      description: Temperature sensor 1
+
+    - name: oxy0
+      channels: [ sbeox0 ]
+      description: Oxygen sensor 0
+
+    - name: oxy1
+      channels: [ sbeox1 ]
+      description: Oxygen sensor 1
+
+    - name: turb
+      channels: [ turbWETntu0 ]
+      description: Turbidity

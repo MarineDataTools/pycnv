@@ -13,10 +13,10 @@ setup(name='pycnv',
       author_email='peter.holtermann@io-warnemuende.de',
       license='GPLv03',
       packages=['pycnv'],
-      scripts = ['pycnv/pycnv_sum_folder.py'],
-      entry_points={ 'console_scripts': ['pycnv=pycnv.pycnv:main']},
+      scripts = [],
+      entry_points={ 'console_scripts': ['pycnv=pycnv.pycnv:main', 'pycnv_sum_folder=pycnv.pycnv_sum_folder:main']},
       package_data = {'':['VERSION','stations/iow_stations.yaml','rules/standard_names.yaml']},
       zip_safe=False)
 
 
-# TODO Depends on gsw
+# TODO Depends on gsw, pyproj
