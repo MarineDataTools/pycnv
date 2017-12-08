@@ -75,6 +75,8 @@ def get_all_valid_files(DATA_FOLDER, loglevel = logging.INFO, station = None):
 
 
     logger.info('Found ' + str(len(matches)) + ' cnv files in folder(s):' + str(DATA_FOLDER))
+    if(len(matches) == 0):
+        return []
     save_file  = []
     files_date = []
     file_names_save = []

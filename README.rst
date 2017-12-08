@@ -30,7 +30,8 @@ FEATURES
 
 - The data can be accessed by the original names defined in the cnv
   file in the named array called data. E.g. header name "# name 11 =
-  oxsatML/L: Oxygen Saturation, Weiss [ml/l]" data['oxsatML/L'].
+  oxsatML/L: Oxygen Saturation, Weiss [ml/l]" can be accessed like
+  this: data['oxsatML/L'].
 
 - Standard parameters (Temperature, Conductivity, pressure, oxygen)
   are mapped to standard names. E.g. data['T0'] for the first
@@ -46,7 +47,8 @@ FEATURES
   modified Gibbs sea water functions are automatically used.
 
 - The package provides scripts to search a given folder for cnv files
-  and can create a summary of the folder. The search can be refined by
+  and can create a summary of the folder in a csv format easily
+  readable by python or office programs. The search can be refined by
   a location or a predefined station.
 
 
@@ -62,9 +64,10 @@ The package installs the executables:
 
   
 Example usage 
-  
-.. code:: python
 
+Plot the in Situ temperature and the conservative temperature of a CTD cast:
+.. code:: python
+	  
 	  import pycnv
 	  import pylab as pl
 	  fname='test'cnv' # A sebaird cnv file
@@ -79,4 +82,15 @@ Example usage
 	  pl.plot(p.cdata['CT'],p.date['p'])
 	  pl.xlabel(p)
 	  pl.gca().invert_yaxis()
+
 	  
+Lists all predefined stations
+.. code:: bash
+	  pycnv_sum_folder --list_stations
+
+	  
+Makes a summary of the folder called cnv_data of all casts around
+station TF0271 with a radius of 5000 m, prints it to the terminal and
+saves it into the file TF271.txt.
+.. code:: bash
+	  pycnv_sum_folder --data_folder cnv_data --station TF0271 5000 -p -f TF271.txt
