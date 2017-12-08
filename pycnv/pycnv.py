@@ -1,13 +1,19 @@
 import datetime
 from pytz import timezone
-from numpy import *
+import numpy
 import logging
 import sys
 import argparse
 import pkg_resources
 import yaml
 
-standard_name_file = pkg_resources.resource_filename('pycnv', 'rules/standard_names.yaml')    
+standard_name_file = pkg_resources.resource_filename('pycnv', 'rules/standard_names.yaml')
+
+# Get the version
+version_file = pkg_resources.resource_filename('pycnv','VERSION')
+
+with open(version_file) as version_f:
+   version = version_f.read().strip()
 
 # TODO: add NMEA position, time
 
@@ -32,7 +38,7 @@ def check_baltic(lon,lat):
     Returns:
        baltic: True: In Baltic, False: not in Baltic
     """
-    if(lon == None or lon == NaN or lat == None or lat == NaN):
+    if(lon == None or lon == numpy.NaN or lat == None or lat == numpy.NaN):
         return False
     
     for i in range(len(regions_baltic)):
@@ -234,8 +240,8 @@ def parse_iow_header(header):
                 logger.warning('pos str:' + str(pos_str))
                 latitude = 'unknown'
                 longitude = 'unknown'
-                lat = NaN
-                lon = NaN
+                lat = numpy.NaN
+                lon = numpy.NaN
                 
             iow_data['lat'] = lat
             iow_data['lon'] = lon
@@ -271,8 +277,8 @@ class pycnv(object):
         self.filename = filename
         self.channels = []
         self.data = None
-        self.lon = None
-        self.lat = None        
+        self.lon = numpy.NaN
+        self.lat = numpy.NaN   
         # Opening file for read
         raw = open(self.filename, "r",encoding=encoding)
         #print('Hallo!',raw)
@@ -307,14 +313,14 @@ class pycnv(object):
         else:
             self.baltic = baltic
             
-        nrec           = shape(self.raw_data)[0]
+        nrec           = numpy.shape(self.raw_data)[0]
         self.units     = {}
         self.names     = {}
         self.names_std = {}
         self.units_std = {}        
         # Check if the dimensions are right
-        if(shape(self.raw_data)[0] > 0):
-            if( shape(self.raw_data)[1] == len(self.channels) ):
+        if(numpy.shape(self.raw_data)[0] > 0):
+            if( numpy.shape(self.raw_data)[1] == len(self.channels) ):
                 # Make a recarray out of the array
                 names   = []
                 formats = []
@@ -332,13 +338,13 @@ class pycnv(object):
 
                 # Create a new recarray with the names as in the header as
                 # the name and the standard names as the title
-                self.data = zeros(shape(self.raw_data)[0],dtype={'names':names,'formats':formats,'titles':titles})
+                self.data = numpy.zeros(numpy.shape(self.raw_data)[0],dtype={'names':names,'formats':formats,'titles':titles})
                 # Fill the recarray
                 #for n,c in enumerate(self.channels):
                 for n in range(nrec):
                     self.data[n] = self.raw_data[n,:]
 
-                self.data   = rec.array(self.data)
+                self.data   = numpy.rec.array(self.data)
                 # Compute absolute salinity and potential density with the gsw toolbox
                 # check if we have enough data to compute
                 self.cdata  = None
@@ -361,7 +367,7 @@ class pycnv(object):
                     FLAG_COMPUTE1 = False                    
 
                 if FLAG_COMPUTE0:
-                    if(not((self.lon == None) or (self.lat == None))):
+                    if(not((self.lon == numpy.NaN) or (self.lat == numpy.NaN))):
                         compdata    = self._compute_data(self.data, self.units_std, self.names_std, baltic=baltic,lon=self.lon, lat=self.lat,isen='0')
                     else:
                         compdata    = self._compute_data(self.data, self.units_std, self.names_std, baltic=baltic,isen = '0')
@@ -374,12 +380,15 @@ class pycnv(object):
                     logger.info('Not computing data using the gsw toolbox, as we dont have the three standard parameters (C0,T0,p0)')
 
                 if FLAG_COMPUTE1:
-                    if(not((self.lon == None) or (self.lat == None))):
+                    if(not((self.lon == numpy.NaN) or (self.lat == numpy.NaN))):
                         compdata    = self._compute_data(self.data, self.units_std, self.names_std, baltic=baltic,lon=self.lon, lat=self.lat,isen='1')
                     else:
                         compdata    = self._compute_data(self.data,self.units_std, self.names_std, baltic=baltic,isen = '0')
-
-                    self.cdata.update(compdata[0])
+                    if self.cdata == None:
+                        self.cdata = compdata[0]
+                    else:
+                        self.cdata.update(compdata[0])
+                        
                     self.cunits.update(compdata[1])
                     self.cnames.update(compdata[2])
                 else:
@@ -549,7 +558,7 @@ class pycnv(object):
             #data.append (line)
             nline += 1
             try:
-                ldata = asarray(l,dtype='float')
+                ldata = numpy.asarray(l,dtype='float')
                 # Get the number of columns with the first line
                 if(nline == 1):
                     ncols = len(ldata)
@@ -561,7 +570,7 @@ class pycnv(object):
                 logger.debug('str:' + line_orig)
 
             
-        self.raw_data = asarray(data)
+        self.raw_data = numpy.asarray(data)
 
     def get_summary(self,header=False):
         """
@@ -597,8 +606,8 @@ class pycnv(object):
             except:
                 rstr += 'NaN' + sep
                 rstr += 'NaN' + sep
-            pmin = NaN
-            pmax = NaN
+            pmin = numpy.NaN
+            pmax = numpy.NaN
             num_samples = 0                    
             if(self.data != None):
                 #print(self.data)
@@ -643,6 +652,8 @@ def main():
     parser.add_argument('--summary', '-s', action='store_true', help=sum_help)
     parser.add_argument('--summary_header', '-sh', action='store_true', help=sumhead_help)
     parser.add_argument('--verbose', '-v', action='count')
+    #parser.add_argument('--version', action='store_true')
+    parser.add_argument('--version', action='version', version='%(prog)s ' + version)
     args = parser.parse_args()
     
     if(args.verbose == None):
@@ -658,6 +669,11 @@ def main():
 
 
     logger.setLevel(loglevel)
+
+    print(args.version)
+    input('gfd')
+    if(args.version != None):
+        print(version)
     
     filename = args.filename
 
