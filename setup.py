@@ -8,7 +8,7 @@ with open(os.path.join(ROOT_DIR, 'VERSION')) as version_file:
 setup(name='pycnv',
       version=version,
       description='Tools to convert Seabird cnv textfiles',
-      url='dontknowyet',
+      url='https://github.com/MarineDataTools/pycnv',
       author='Peter Holtermann',
       author_email='peter.holtermann@io-warnemuende.de',
       license='GPLv03',
