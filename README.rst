@@ -87,7 +87,8 @@ Plot the in Situ temperature and the conservative temperature of a CTD cast:
 	  
 Lists all predefined stations (in terminal):
 
-.. code::
+.. code:: python
+	  
 	  pycnv_sum_folder --list_stations
 
 
@@ -95,7 +96,8 @@ Makes a summary of the folder called cnv_data of all casts around
 station TF0271 with a radius of 5000 m, prints it to the terminal and
 saves it into the file TF271.txt  (in terminal):
 
-.. code:: 
+.. code:: python
+	  
 	  pycnv_sum_folder --data_folder cnv_data --station TF0271 5000 -p -f TF271.txt
 
 
