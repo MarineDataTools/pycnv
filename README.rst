@@ -63,9 +63,10 @@ The package installs the executables:
 - pycnv_sum_folder
 
   
-Example usage 
-
+EXAMPLES 
+--------
 Plot the in Situ temperature and the conservative temperature of a CTD cast:
+
 .. code:: python
 	  
 	  import pycnv
@@ -85,6 +86,7 @@ Plot the in Situ temperature and the conservative temperature of a CTD cast:
 
 	  
 Lists all predefined stations
+
 .. code:: bash
 	  pycnv_sum_folder --list_stations
 
@@ -92,5 +94,6 @@ Lists all predefined stations
 Makes a summary of the folder called cnv_data of all casts around
 station TF0271 with a radius of 5000 m, prints it to the terminal and
 saves it into the file TF271.txt.
+
 .. code:: bash
 	  pycnv_sum_folder --data_folder cnv_data --station TF0271 5000 -p -f TF271.txt
