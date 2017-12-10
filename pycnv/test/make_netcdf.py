@@ -9,9 +9,10 @@ import netCDF4
 import logging
 import time
 from numpy import *
+import sys
 # cnv DATA_FOLDER (this hast to be changed to a local cnv folder)
-DATA_FOLDER  = '/home/holterma/iow_data_cnv'
-#DATA_FOLDER = '/home/holterma/iow_data_cnv/fahrten.2004'
+DATA_FOLDER  = sys.argv[1]
+
 
 # Get all stations
 stations = pycnv.get_stations()
