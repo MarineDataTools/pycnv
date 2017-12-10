@@ -40,12 +40,14 @@ def get_stations():
 def get_all_valid_files(DATA_FOLDER, loglevel = logging.INFO, station = None):
     """
     Args:
-       DATA_FOLDER: Path of the data
+       DATA_FOLDER: Either list of data_folder or string of one data_folder
        station: CTD cast has to lie within radius around position, given as a list with longitude [decdeg], latitude [decdeg], radius [m], e.g. [20.0,54.0,5000]
     Returns:
-        List of filanames readable by pyvnc
+        Dictionary with data
     """
 
+    if(isinstance(DATA_FOLDER, str)):
+        DATA_FOLDER = [DATA_FOLDER]
     if station == None:
         FLAG_DIST = False
     else:
@@ -76,7 +78,7 @@ def get_all_valid_files(DATA_FOLDER, loglevel = logging.INFO, station = None):
 
     logger.info('Found ' + str(len(matches)) + ' cnv files in folder(s):' + str(DATA_FOLDER))
     if(len(matches) == 0):
-        return []
+        return {'files':[],'dates':[]}
     save_file  = []
     files_date = []
     file_names_save = []
@@ -117,7 +119,8 @@ def get_all_valid_files(DATA_FOLDER, loglevel = logging.INFO, station = None):
         logger.debug('Writing file')
         ind_sort = numpy.argsort(files_date_save)
         file_names_save_sort = list(numpy.asarray(file_names_save)[ind_sort])
-        return file_names_save_sort
+        retdata={'files':file_names_save_sort,'dates':list(numpy.asarray(files_date_save)[ind_sort])}
+        return retdata
 
 
 def main():
@@ -270,7 +273,9 @@ def main():
         sys.exit(0)
 
 
-    file_names_save = get_all_valid_files(DATA_FOLDER,loglevel=loglevel, station = constraint_station)    
+    cnv_data = get_all_valid_files(DATA_FOLDER,loglevel=loglevel, station = constraint_station)
+    file_names_save = cnv_data['files']
+    
     if True:
         num_wr = 0
         for nf,fname in enumerate(file_names_save):

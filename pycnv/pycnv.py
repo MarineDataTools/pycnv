@@ -22,7 +22,9 @@ logging.basicConfig(stream=sys.stderr, level=logging.WARNING)
 logger = logging.getLogger('pycnv')
 
 # Regions to test if we are in the Baltic Sea for different equation of state
-regions_baltic = [[[  9.4,  13.4],[ 53.9,  56.3]]]
+regions_baltic = []
+regions_baltic.append([[ 10.2,  13. ],[ 56.2,  57.5]])
+regions_baltic.append([[  9.4,  13.4],[ 53.9,  56.3]])
 regions_baltic.append([[ 13.3,  17.],[ 53.4,  56.3]])
 regions_baltic.append([[ 15.9,  24.6],[ 54.2,  60.2 ]])
 regions_baltic.append([[ 24.3,  30.4],[ 59.1,  60.8]])
@@ -101,8 +103,12 @@ def parse_iow_header(header):
     for line in header.splitlines():
         #print line
         if  "Startzeit" in line:
+            # This can happen
             # ** Startzeit= 13:13:15 25-Sep-07
+            # ** Startzeit= 07:13:09 utc 28-APR-99
             line_orig = line
+            line = line.replace('UTC','')
+            line = line.replace('utc','')            
             #print(line)
             try:
                 line = line.replace("\n","").replace("\r","")
@@ -119,7 +125,10 @@ def parse_iow_header(header):
                 monat = datum_split[1]            
                 jahr = datum_split[2]
                 if(len(jahr) == 2):
-                    jahr = '20' + jahr
+                    if(int(jahr) < 80): # 2000 - 2079
+                        jahr = '20' + jahr
+                    else: # 1980-1999
+                        jahr = '19' + jahr                    
 
                 #print(line)
                 datum_start = date_correction(tag, monat, jahr)
@@ -131,10 +140,14 @@ def parse_iow_header(header):
                     iow_data['date'] = datetime.datetime.strptime(datum_start + zeit_start,'%Y-%m-%d%H:%M:%S')
                     iow_data['date'].replace(tzinfo=timezone('UTC'))
                 except:
-                    iow_data['date'] = None                        
+                    logger.warning('Startzeit to datetime:' + str(e))
+                    logger.warning('Startzeit str:' + line_orig)                    
+                    iow_data['date'] = None
+                    
             except Exception as e:
                 logger.warning('Startzeit parsing error:' + str(e))
                 logger.warning('Startzeit str:' + line_orig)
+
 
         ###### Meta-Daten der Reise und Station
         elif "ReiseNr" in line:
@@ -165,13 +178,13 @@ def parse_iow_header(header):
             try:
                 echo0 = float(line[1].split('m')[0])
             except Exception as e:
-                logger.warning('IOW:Echolot:' + str(e))
+                logger.debug('IOW:Echolot:' + str(e))
                 echo0 = None
 
             try:
                 echo1 = float(line[1].split('m')[1])
             except Exception as e:
-                logger.warning('IOW:Echolot:' + str(e))
+                logger.debug('IOW:Echolot:' + str(e))
                 echo1 = None                
 
             iow_data['echo'] = (echo0,echo1)
@@ -184,14 +197,16 @@ def parse_iow_header(header):
             try:
                 serie_nr = line[3]
             except Exception as e:
-                logger.warning('SerieNr parsing error:' + str(e))
-                logger.warning('str:' + line_orig)
+                logger.debug('SerieNr parsing error:' + str(e))
+                logger.debug('str:' + line_orig)
+                serie_nr = ''
 
             try:                
                 operator = line[5]
             except Exception as e:
-                logger.warning('Operator parsing error:' + str(e))
-                logger.warning('str:' + line_orig)
+                logger.debug('Operator parsing error:' + str(e))
+                logger.debug('str:' + line_orig)
+                operator = ''                
 
             # print("Serie: %s" % serie_nr)
             # print("Operator: %s" % operator)
@@ -275,8 +290,10 @@ class pycnv(object):
         logger.setLevel(verbosity)
         logger.info(' Opening file: ' + filename)
         self.filename = filename
+        self.file_type = ''
         self.channels = []
         self.data = None
+        self.date = None        
         self.lon = numpy.NaN
         self.lat = numpy.NaN   
         # Opening file for read
@@ -291,9 +308,18 @@ class pycnv(object):
             logger.critical('Did not find any channels in file: ' + filename + ', exiting (No cnv file?)')
             self.valid_cnv = False
             return
-            
-            
-        # Custom header information
+
+        # Check if we have a known data format
+        if 'ASCII' in self.file_type.upper():
+            pass
+        else:
+            logger.critical('Data format in file: ' + filename + ', is ' + str(self.file_type) + ' which I cannot understand (right now).')
+            self.valid_cnv = False
+            return
+
+        
+        # Custom header information, at the moment only the IOW header
+        # is supported, in future more headers should be added
         self.iow = parse_iow_header(self.header)
         try:
             self.lat = self.iow['lat']
@@ -301,11 +327,18 @@ class pycnv(object):
         except:
             pass
 
+        # If no date was found, try the IOW date
+        if self.date == None:
+            try:
+                self.date = self.iow['date']
+            except:
+                pass
+
             
             
         # Trying to extract standard names (p, C, S, T, oxy ... ) from the channel names
         self._get_standard_channel_names(naming_rules)
-        
+
         self._get_data(raw)
         # Check if we are in the Baltic Sea
         if(baltic == None):
@@ -377,7 +410,7 @@ class pycnv(object):
                     self.cunits.update(compdata[1])
                     self.cnames.update(compdata[2])
                 else:
-                    logger.info('Not computing data using the gsw toolbox, as we dont have the three standard parameters (C0,T0,p0)')
+                    logger.debug('Not computing data using the gsw toolbox, as we dont have the three standard parameters (C0,T0,p0)')
 
                 if FLAG_COMPUTE1:
                     if(not((self.lon == numpy.NaN) or (self.lat == numpy.NaN))):
@@ -392,7 +425,7 @@ class pycnv(object):
                     self.cunits.update(compdata[1])
                     self.cnames.update(compdata[2])
                 else:
-                    logger.info('Not computing data using the gsw toolbox, as we dont have the three standard parameters (C1,T1,p)')
+                    logger.debug('Not computing data using the gsw toolbox, as we dont have the three standard parameters (C1,T1,p)')
             else:
                 logger.warning('Different number of columns in data section as defined in header, this is bad ...')
         else:
@@ -488,7 +521,6 @@ class pycnv(object):
                     self.date.replace(tzinfo=timezone('UTC'))
                 except Exception as e:
                     logger.warning('Could not decode time: ( ' + datum + ' )' + str(e))
-                    self.date = None
 
             # Look for sensor names and units of type:
             # # name 4 = t090C: Temperature [ITS-90, deg C]
@@ -520,6 +552,12 @@ class pycnv(object):
                     sensor['unit'] = None
 
                 self.channels.append(sensor)
+
+            if "# file_type" in l:
+                lsp = l.split("= ",1)
+                file_type = lsp[1]
+                file_type.replace(' ','')
+                self.file_type = file_type
         
         
     def _get_standard_channel_names(self, naming_rules):
@@ -551,23 +589,24 @@ class pycnv(object):
         """
         data = []
         nline = 0
-        for l in raw:
-            line_orig = l
-            l = l.replace("\n","").replace("\r","")
-            l = l.split()
-            #data.append (line)
-            nline += 1
-            try:
-                ldata = numpy.asarray(l,dtype='float')
-                # Get the number of columns with the first line
-                if(nline == 1):
-                    ncols = len(ldata)
+        if True:
+            for l in raw:
+                line_orig = l
+                l = l.replace("\n","").replace("\r","")
+                l = l.split()
+                #data.append (line)
+                nline += 1
+                try:
+                    ldata = numpy.asarray(l,dtype='float')
+                    # Get the number of columns with the first line
+                    if(nline == 1):
+                        ncols = len(ldata)
 
-                if(len(ldata) == ncols):
-                    data.append(ldata)
-            except Exception as e:
-                logger.warning('Could not convert data to floats in line:' + str(nline))
-                logger.debug('str:' + line_orig)
+                    if(len(ldata) == ncols):
+                        data.append(ldata)
+                except Exception as e:
+                    logger.warning('Could not convert data to floats in line:' + str(nline))
+                    logger.debug('str:' + line_orig)
 
             
         self.raw_data = numpy.asarray(data)
@@ -671,7 +710,6 @@ def main():
     logger.setLevel(loglevel)
 
     print(args.version)
-    input('gfd')
     if(args.version != None):
         print(version)
     
