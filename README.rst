@@ -101,3 +101,11 @@ saves it into the file TF271.txt  (in terminal):
 	  pycnv_sum_folder --data_folder cnv_data --station TF0271 5000 -p -f TF271.txt
 
 
+
+Interpolate all CTD casts on station TF0271 onto the same pressure axis and make a netCDF out of it:
+
+see code pycnv/test/make_netcdf.py
+	  
+
+
+
