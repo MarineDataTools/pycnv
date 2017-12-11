@@ -69,7 +69,7 @@ def date_correction(tag, monat, jahr):
     ### Vereinheitlichung des Datums nach ISO
     # German month naming
     if monat.lower()=="dez": monat_int = 12
-    if monat.lower()=="mrz": monat_int = 5        
+    if monat.lower()=="mrz": monat_int = 3        
     if monat.lower()=="mai": monat_int = 5
     if monat.lower()=="okt": monat_int = 10    
     if monat.lower()=="jan": monat_int = 1
