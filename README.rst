@@ -35,7 +35,7 @@ pip uninstall pycnv
 Developer
 _________
 
-Install as a user
+Install as a developer
 
 .. code:: bash
 	  
