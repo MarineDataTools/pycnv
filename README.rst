@@ -9,6 +9,29 @@ These text files are the standard output files of the Seabird CTD software.
 Install
 -------
 
+The package was developed using python 3.5+, it might work with
+earlier versions, but its not supported. The newest
+.. _Gibb Sea Water Toolbox (gsw): https://github.com/TEOS-10/GSW-Python
+depends also on python 3.5+, pycnv heavily depends on the gsw toolbox. It
+therefore strongly recommended to use python 3.5+.
+
+User
+____
+
+Install as a user
+
+.. code:: bash
+	  
+   python setup.py install --user
+
+Uninstall as a user
+   
+.. code:: bash
+	  
+pip uninstall pycnv
+
+
+
 Developer
 _________
 
@@ -76,11 +99,11 @@ Plot the in Situ temperature and the conservative temperature of a CTD cast:
 	  pl.figure(1)
 	  pl.clf()
 	  pl.subplot(1,2,1)
-	  pl.plot(p.data['T'],p.date['p'])
+	  pl.plot(p.data['T'],p.data['p'])
 	  pl.xlabel(p.units['T'])
 	  pl.gca().invert_yaxis()	  
 	  pl.subplot(1,2,2)
-	  pl.plot(p.cdata['CT'],p.date['p'])
+	  pl.plot(p.cdata['CT'],p.data['p'])
 	  pl.xlabel(p)
 	  pl.gca().invert_yaxis()
 
