@@ -11,7 +11,7 @@ Install
 
 The package was developed using python 3.5+, it might work with
 earlier versions, but its not supported. The newest
-.. _Gibb Sea Water Toolbox (gsw): https://github.com/TEOS-10/GSW-Python
+`Gibb Sea Water Toolbox (gsw) <https://github.com/TEOS-10/GSW-Python>`_
 depends also on python 3.5+, pycnv heavily depends on the gsw toolbox. It
 therefore strongly recommended to use python 3.5+.
 
