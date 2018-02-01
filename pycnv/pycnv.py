@@ -444,7 +444,7 @@ class pycnv(object):
            lon: Longitude of ctd cast default=0
            lat: Latitude of ctd cast default=0
         Returns:
-           list [cdata,cunits,cnames] with cdata: recarray with entries 'SP', 'SA', 'pot_rho', cunits: dictionary with units, cnames: dictionary with names 
+           list [cdata,cunits,cnames] with cdata: recarray with entries 'SP', 'SA', 'pot_rho', etc., cunits: dictionary with units, cnames: dictionary with names 
         """
         sen = isen + isen
         # Check for units and convert them if neccessary
@@ -472,7 +472,7 @@ class pycnv(object):
         cdata['SP' + sen]= SP
         cdata['SA' + sen]= SA
         cdata['pot_rho' + sen] = pot_rho
-        cdata['pt0' + sen]     = PT
+        cdata['pt' + sen]     = PT
         cdata['CT' + sen]      = CT
         cnames           = {'SA' + sen:'Absolute salinity','SP' + sen: 'Practical Salinity on the PSS-78 scale',
                             'pot_rho' + sen: 'Potential density',
