@@ -128,6 +128,19 @@ saves it into the file TF271.txt  (in terminal):
 Interpolate all CTD casts on station TF0271 onto the same pressure axis and make a netCDF out of it:
 
 see code pycnv/test/make_netcdf.py
+
+
+Devices tested 
+--------------
+
+- SEACAT V4.0g
+
+- SBE 11plus V 5.1e
+
+- SBE 11plus V 5.1g
+
+- Sea-Bird SBE 9 Software Version 4.206
+
 	  
 
 

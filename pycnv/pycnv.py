@@ -138,7 +138,7 @@ def parse_iow_header(header):
                 zeit_start = line_split[0]
                 try:
                     iow_data['date'] = datetime.datetime.strptime(datum_start + zeit_start,'%Y-%m-%d%H:%M:%S')
-                    iow_data['date'].replace(tzinfo=timezone('UTC'))
+                    iow_data['date'] = iow_data['date'].replace(tzinfo=timezone('UTC'))
                 except:
                     logger.warning('Startzeit to datetime:' + str(e))
                     logger.warning('Startzeit str:' + line_orig)                    
@@ -517,10 +517,23 @@ class pycnv(object):
                 line     = l.split(" = ")
                 datum = line[1]
                 try:
-                    self.date = datetime.datetime.strptime(datum,'%b %d %Y %H:%M:%S')
-                    self.date.replace(tzinfo=timezone('UTC'))
+                    self.upload_date = datetime.datetime.strptime(datum,'%b %d %Y %H:%M:%S')
+                    self.upload_date = self.upload_date.replace(tzinfo=timezone('UTC'))
                 except Exception as e:
                     logger.warning('Could not decode time: ( ' + datum + ' )' + str(e))
+
+            
+            if "# start_time = " in l:
+                # Like this:
+                # start_time = May 03 2018 13:02:01 [Instrument's time stamp, header]
+                line     = l.split(" = ")
+                line1     = line[1].split(" [")                
+                datum = line1[0]
+                try:
+                    self.date = datetime.datetime.strptime(datum,'%b %d %Y %H:%M:%S')
+                    self.date = self.date.replace(tzinfo=timezone('UTC'))
+                except Exception as e:
+                    logger.warning('Could not decode time: ( ' + datum + ' )' + str(e))                    
 
             # Look for sensor names and units of type:
             # # name 4 = t090C: Temperature [ITS-90, deg C]
