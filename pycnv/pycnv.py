@@ -373,9 +373,8 @@ class pycnv(object):
                 # the name and the standard names as the title
                 self.data = numpy.zeros(numpy.shape(self.raw_data)[0],dtype={'names':names,'formats':formats,'titles':titles})
                 # Fill the recarray
-                #for n,c in enumerate(self.channels):
                 for n in range(nrec):
-                    self.data[n] = self.raw_data[n,:]
+                    self.data[n] = tuple(self.raw_data[n,:])
 
                 self.data   = numpy.rec.array(self.data)
                 # Compute absolute salinity and potential density with the gsw toolbox
