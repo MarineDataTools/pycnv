@@ -74,6 +74,9 @@ FEATURES
   readable by python or office programs. The search can be refined by
   a location or a predefined station.
 
+- Possibility to provide an own function for parsing custom header
+  information.
+
 
 
 USAGE

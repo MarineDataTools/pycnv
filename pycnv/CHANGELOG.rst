@@ -1,3 +1,5 @@
+0.3.5:
+        - Custom header functionality added
 0.3.4:
         - Added requirements to setup.py
         - changed CHANGELOG to CHANGELOG.rst

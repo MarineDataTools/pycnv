@@ -95,9 +95,8 @@ def date_correction(tag, monat, jahr):
         return None    
 
 
-def parse_iow_header(header):
-    """
-    Parsing the header for iow_data and saving it into a structure
+def parse_iow_header(header,pycnv_object=None):
+    """ Parsing the header for iow_data and saving it into a structure
     """
     iow_data = {}
     for line in header.splitlines():
@@ -261,6 +260,19 @@ def parse_iow_header(header):
             iow_data['lat'] = lat
             iow_data['lon'] = lon
 
+
+    if pycnv_object is not None:
+        pycnv_object.iow = iow_data
+        pycnv_object.lat = iow_data['lat']
+        pycnv_object.lon = iow_data['lon']
+        # If no date was found, try the IOW date
+        if pycnv_object.date == None:
+            try:
+                self.date = iow_data['date']
+            except:
+                pass         
+
+    # Returns all data also as a dictionary
     return iow_data
 
 
@@ -282,13 +294,15 @@ class pycnv(object):
        naming_rules:
        encoding:
        baltic: Flag if the cast was in the Baltic Sea. None: Automatic check based on parsed lat/lon and the regions definded in pycnv.regions_baltic, True: cast is in Baltic, False: cast is not in Baltic. If cast is in Baltic the gsw equation of state for the Baltic Sea will be used.
+       header_parse: Function for parsing custom header information, will be called like so: header_parse(header_str, self), where self is the pycnv object. The function can thus create fields of the pycnv object. See parse_iow_header() as an example
     
     """
-    def __init__(self,filename, only_metadata = False,verbosity = logging.INFO, naming_rules = standard_name_file,encoding='latin-1',baltic=None ):
+    def __init__(self,filename, only_metadata = False,verbosity = logging.INFO, naming_rules = standard_name_file,encoding='latin-1',baltic=None, header_parse = parse_iow_header  ):
         """
         """
         logger.setLevel(verbosity)
         logger.info(' Opening file: ' + filename)
+        self.parse_custom_header = header_parse
         self.filename = filename
         self.file_type = ''
         self.channels = []
@@ -317,32 +331,18 @@ class pycnv(object):
             self.valid_cnv = False
             return
 
-        
-        # Custom header information, at the moment only the IOW header
-        # is supported, in future more headers should be added
-        self.iow = parse_iow_header(self.header)
-        try:
-            self.lat = self.iow['lat']
-            self.lon = self.iow['lon']
-        except:
-            pass
 
-        # If no date was found, try the IOW date
-        if self.date == None:
-            try:
-                self.date = self.iow['date']
-            except:
-                pass
+        # Call the custom header parsing function
+        self.parse_custom_header(self.header,self)
 
-            
-            
-        # Trying to extract standard names (p, C, S, T, oxy ... ) from the channel names
+        # Trying to extract standard names (p, C, S, T, oxy ... ) from
+        # the channel names
         self._get_standard_channel_names(naming_rules)
 
         self._get_data(raw)
         # Check if we are in the Baltic Sea
         if(baltic == None):
-            self.baltic= check_baltic(self.lon,self.lat)
+            self.baltic = check_baltic(self.lon,self.lat)
         else:
             self.baltic = baltic
             
