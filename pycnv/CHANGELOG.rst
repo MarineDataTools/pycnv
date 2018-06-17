@@ -1,3 +1,6 @@
+0.3.4:  - Added requirements to setup.py
+        - changed CHANGELOG to CHANGELOG.rst
+
 0.3.3:  - Changed pycnv.date to start_time field
 	- Timezone is now added to date fields
 0.3.2:
