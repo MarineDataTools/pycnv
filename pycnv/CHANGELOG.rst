@@ -1,3 +1,7 @@
+0.3.6:
+        - cdata has a copy of the 'p' field for convenience
+	- oxygen is now correctly read in as standard name
+	- oxygen saved in ml/l is converted to umol/l and saved in cdata
 0.3.5:
         - Custom header functionality added
 0.3.4:

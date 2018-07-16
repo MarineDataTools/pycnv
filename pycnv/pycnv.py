@@ -410,7 +410,7 @@ class pycnv(object):
                     self.cnames.update(compdata[2])
                 else:
                     logger.debug('Not computing data using the gsw toolbox, as we dont have the three standard parameters (C0,T0,p0)')
-
+                # Compute second sensor pair
                 if FLAG_COMPUTE1:
                     if(not((self.lon == numpy.NaN) or (self.lat == numpy.NaN))):
                         compdata    = self._compute_data(self.data, self.units_std, self.names_std, baltic=baltic,lon=self.lon, lat=self.lat,isen='1')
@@ -425,6 +425,27 @@ class pycnv(object):
                     self.cnames.update(compdata[2])
                 else:
                     logger.debug('Not computing data using the gsw toolbox, as we dont have the three standard parameters (C1,T1,p)')
+
+                # Add pressure for convenience to cdata
+                if self.cdata is not None:
+                    self.cdata['p'] = self.data['p'][:]
+                    self.cunits['p'] = self.units_std['p']
+                    self.cnames['p'] = self.names_std['p']
+                    # Add oxygen in umol/l to cdata
+                    oxyfac = 1e3  / 22.391
+                    oxy_names = ['oxy0','oxy1']
+                    for oxy_name in oxy_names:
+                        if(oxy_name in self.names_std.keys()):
+                            logger.debug('Found ' + oxy_name + ' channel, checking  unit')
+                            if(self.units_std[oxy_name].upper() == 'ML/L'):
+                                logger.debug('Found ' + oxy_name + ' channel, unit is ml/l converting to umol/l')
+                                self.cdata[oxy_name] = self.data[oxy_name][:]  * oxyfac 
+                                self.cunits[oxy_name] = 'umol/l'
+                                self.cnames[oxy_name] = self.names_std[oxy_name]
+                                
+                                
+                
+                
             else:
                 logger.warning('Different number of columns in data section as defined in header, this is bad ...')
         else:
@@ -587,7 +608,7 @@ class pycnv(object):
                     found = False
                     break
                 for ct in self.channels:
-                    if(ct['name'] in c):
+                    if(c in ct['name']):
                         ct['title'] = r['name']
                         logger.debug('Found channel' + str(ct) + ' ' + str(c))
                         found = True
