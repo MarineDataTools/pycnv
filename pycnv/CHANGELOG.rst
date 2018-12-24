@@ -1,3 +1,6 @@
+0.3.7:
+        - first version with a rudimentary plot routine
+	- changed data from recarray to dictionary
 0.3.6:
         - cdata has a copy of the 'p' field for convenience
 	- oxygen is now correctly read in as standard name

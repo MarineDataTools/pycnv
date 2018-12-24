@@ -6,6 +6,8 @@ import sys
 import argparse
 import pkg_resources
 import yaml
+import pylab as pl
+import os
 
 standard_name_file = pkg_resources.resource_filename('pycnv', 'rules/standard_names.yaml')
 
@@ -263,8 +265,12 @@ def parse_iow_header(header,pycnv_object=None):
 
     if pycnv_object is not None:
         pycnv_object.iow = iow_data
-        pycnv_object.lat = iow_data['lat']
-        pycnv_object.lon = iow_data['lon']
+        try:
+            pycnv_object.lat = iow_data['lat']
+            pycnv_object.lon = iow_data['lon']
+        except:
+            pycnv_object.lat = numpy.NaN
+            pycnv_object.lon = numpy.NaN
         # If no date was found, try the IOW date
         if pycnv_object.date == None:
             try:
@@ -309,7 +315,11 @@ class pycnv(object):
         self.data = None
         self.date = None        
         self.lon = numpy.NaN
-        self.lat = numpy.NaN   
+        self.lat = numpy.NaN
+
+        # Plotting variables
+        self.figures = []
+        self.axes    = []        
         # Opening file for read
         raw = open(self.filename, "r",encoding=encoding)
         #print('Hallo!',raw)
@@ -350,10 +360,11 @@ class pycnv(object):
         self.units     = {}
         self.names     = {}
         self.names_std = {}
-        self.units_std = {}        
+        self.units_std = {}  
         # Check if the dimensions are right
         if(numpy.shape(self.raw_data)[0] > 0):
             if( numpy.shape(self.raw_data)[1] == len(self.channels) ):
+                self.data = {}
                 # Make a recarray out of the array
                 names   = []
                 formats = []
@@ -363,20 +374,15 @@ class pycnv(object):
                     names.append(c['name'])
                     formats.append('float')
                     titles.append(c['title'])
+                    self.data[c['name']]  = self.raw_data[:,n]
+                    if(c['title'] not in ('i' + str(c['index']))):
+                       self.data[c['title']]  = self.raw_data[:,n]
                     self.names[c['name']] = c['long_name']
                     self.units[c['name']] = c['unit']
                     self.names_std[c['title']] = c['long_name']
                     self.units_std[c['title']] = c['unit']
-                    
 
-                # Create a new recarray with the names as in the header as
-                # the name and the standard names as the title
-                self.data = numpy.zeros(numpy.shape(self.raw_data)[0],dtype={'names':names,'formats':formats,'titles':titles})
-                # Fill the recarray
-                for n in range(nrec):
-                    self.data[n] = tuple(self.raw_data[n,:])
 
-                self.data   = numpy.rec.array(self.data)
                 # Compute absolute salinity and potential density with the gsw toolbox
                 # check if we have enough data to compute
                 self.cdata  = None
@@ -437,7 +443,11 @@ class pycnv(object):
                     for oxy_name in oxy_names:
                         if(oxy_name in self.names_std.keys()):
                             logger.debug('Found ' + oxy_name + ' channel, checking  unit')
-                            if(self.units_std[oxy_name].upper() == 'ML/L'):
+                            try:
+                                oxyunit = self.units_std[oxy_name].upper()
+                            except:
+                                oxyunit = None
+                            if(oxyunit == 'ML/L'):
                                 logger.debug('Found ' + oxy_name + ' channel, unit is ml/l converting to umol/l')
                                 self.cdata[oxy_name] = self.data[oxy_name][:]  * oxyfac 
                                 self.cunits[oxy_name] = 'umol/l'
@@ -609,7 +619,7 @@ class pycnv(object):
                     break
                 for ct in self.channels:
                     if(c in ct['name']):
-                        ct['title'] = r['name']
+                        ct['title'] = r['name'] # Save the alternative name in the channel
                         logger.debug('Found channel' + str(ct) + ' ' + str(c))
                         found = True
                         break
@@ -698,8 +708,185 @@ class pycnv(object):
             rstr += self.filename + sep
                 
         return rstr
+    
+    #
+    # Plotting functions
+    #
+    def plot(self,xaxis=['CT00','SA00','oxy0','pot_rho00'],yaxis='p',show=True,save=True):
+    #def plot(self,xaxis=['CT00','pot_rho00'],yaxis='p',show=True,save=True):
+        """ Plots the data in the cnv file using matplotlib
+        """
+
+        # Looking for data for y-axis
+        try:
+            y_data = self.cdata[yaxis]
+            y_names = self.cnames[yaxis]
+            y_units = self.cunits[yaxis]          
+            logger.debug('plot():Found y-axis data (cdata):' + yaxis)
+        except Exception as e:
+            try:
+                y_data = self.data[yaxis]
+                y_names = self.names[yaxis]
+                y_units = self.units[yaxis]                          
+                logger.debug('plot():Found y-axis data (data):' + yaxis)
+            except Exception as e:
+                logger.warning('plot():Did not find valid y-axis:' + yaxis)
+                return
+
+        # Looking for data for x-axis
+        x_data  = []
+        x_names = []
+        x_units = []
+        for dat_plot in xaxis:
+            print(dat_plot)
+            if dat_plot in self.data:
+                print('Found data to plot in data:' + dat_plot)                
+                x_data.append(self.data[dat_plot])
+                if dat_plot in self.names:
+                    x_names.append(self.names[dat_plot])
+                    x_units.append(self.units[dat_plot])
+                else:
+                    x_names.append(self.names_std[dat_plot])
+                    x_units.append(self.units_std[dat_plot])                    
+                    
+            else:
+                if dat_plot in self.cdata:
+                    print('Found data to plot in cdata:' + dat_plot)                    
+                    x_data.append(self.cdata[dat_plot])
+                    x_names.append(self.cnames[dat_plot])
+                    x_units.append(self.cunits[dat_plot])
+                    
+
+        print(len(x_data),len(x_names),len(x_units))
+        # Check if we have data to plot
+        if len(x_data) == 0:
+            logger.warning('plot():Did not find valid x-data:')
+            return
+
+        fig = pl.figure()
+        ax = pl.subplot(1,1,1)
+        self.figures.append(fig)
+        ax_dict = {'figure':fig,'axes':[ax],'x_data':x_data,'x_names':x_names,'x_units':x_units,'y_data':y_data,'y_names':y_names,'y_units':y_units}
+        
+        self.axes.append(ax_dict)
+        # Drawing the data
+        self._draw_data(ax_dict)
+        
+        
+        if save:
+            base_name = os.path.basename(self.filename)
+            dstr = self.date.strftime('%Y-%m-%d_%H.%M.%S')        
+            fig_name  = dstr + '_' + base_name
+
+            varstr = ''
+            for dat_plot in x_names:
+                varstr += '_' + dat_plot
+                
+            #varstr += '_'
+            poststr = '.pdf'
+            print('Saving file to file:' + fig_name + varstr + poststr)
+
+        if show:
+            pl.show()
+
+        
+    def _draw_data(self,data):
+        """Draws in the axes all the data defined in the given dictionary and
+creates additional axes with the same size, if necessary. It will move
+the spines of the additional axes such that all ticks are visible
+
+        """
+
+        fig    = data['figure']
+        ax     = data['axes'][0]
+        xdata  = data['x_data']
+        xnames = data['x_names']
+        xunits = data['x_units']        
+        ydata  = data['y_data']
+        naxes  = len(xdata)
+        
+        # Get the position of the axes
+        posx = ax.get_position().get_points()[:,0]
+        posy = ax.get_position().get_points()[:,1]
+        # Recalculate the axes position in y-direction for the
+        # additional data to be plotted
+        # Each additional label/ticks needs additional dy
+        dy        = 0.2
+        y_bottom  = []
+        y_top     = []
+        i_bottom  = -1
+        i_top     = -1
+        print('posy',posy)
+        for i in range(0,naxes):
+            if(i%2 == 0):
+                i_bottom += 1
+                y_top.append(numpy.NaN)
+                y_bottom.append(0 - i_bottom * dy)
+            else:
+                i_top += 1
+                y_bottom.append(numpy.NaN)
+                y_top.append(1 + i_top * dy)
 
 
+        pos_new = [.1,.3,.8,.5]
+        ax.set_position(pos_new)                
+        # Create new axes
+        for i in range(0,naxes):
+            print('Creating new axes')
+            if(i>0):
+                # This is a nasty hack, otherwise a same position will result in the same axes
+                pos_new[0] += 1e-12
+                data['axes'].append(pl.axes(pos_new))
+                
+            axtmp = data['axes'][-1]
+            if(i == 0): # Dont do anything on the original axis
+                pass
+            else:
+                # Taking care of the location of the spines
+                axtmp.set_frame_on(True)
+                axtmp.patch.set_visible(False)
+                axtmp.yaxis.set_ticks(()) # No yticks for all other axes
+                for sp in axtmp.spines.values():
+                    sp.set_visible(False)
+
+            if(i%2 == 0):
+                print('y_bottom',y_bottom[i])
+                axtmp.spines["bottom"].set_position(("axes", y_bottom[i]))
+                axtmp.spines["top"].set_visible(False)
+                axtmp.spines["bottom"].set_visible(True)                
+                axtmp.xaxis.set_ticks_position("bottom")
+            else:
+                print('y_top',y_top[i])
+                axtmp.spines["top"].set_position(("axes", y_top[i]))
+                axtmp.spines["top"].set_visible(True)
+                axtmp.spines["top"].set_color('r')
+                axtmp.spines["bottom"].set_visible(False)                
+                axtmp.xaxis.set_ticks_position("top")
+                
+
+            
+        # Plotting the data
+        print(data['axes'])
+        print(data['axes'][1] == data['axes'][2])
+        for i in range(0,naxes):
+            axtmp = data['axes'][i]
+            pltmp = axtmp.plot(xdata[i],ydata)
+            pl.xlabel('ffdsd')
+            axtmp.xaxis.label.set_color(pltmp[0].get_color())
+            axtmp.xaxis.label.set_label(xnames[i])
+            
+        self._update_plot_style(data)
+
+
+    def _update_plot_style(self,data):
+        """Updates the color and line styles of the data given in the passed
+        dictionary.
+
+        """
+        pass
+        
+
+        
     def __str__(self):
         """
         String format
