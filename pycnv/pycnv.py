@@ -495,21 +495,21 @@ class pycnv(object):
             
         PT = gsw.pt0_from_t(SA, T, data['p'])
         CT = gsw.CT_from_t(SA, T, data['p'])        
-        pot_rho          = gsw.pot_rho_t_exact(SA, T, data['p'], p_ref)
-        names            = ['SP' + sen,'SA' + sen,'pot_rho' + sen,'pt0' + sen,'CT' + sen]
-        formats          = ['float','float','float','float','float']        
-        cdata            = {}
-        cdata['SP' + sen]= SP
-        cdata['SA' + sen]= SA
+        pot_rho                = gsw.pot_rho_t_exact(SA, T, data['p'], p_ref)
+        names                  = ['SP' + sen,'SA' + sen,'pot_rho' + sen,'pt0' + sen,'CT' + sen]
+        formats                = ['float','float','float','float','float']        
+        cdata                  = {}
+        cdata['SP' + sen]      = SP
+        cdata['SA' + sen]      = SA
         cdata['pot_rho' + sen] = pot_rho
-        cdata['pt' + sen]     = PT
+        cdata['pt' + sen]      = PT
         cdata['CT' + sen]      = CT
         cnames           = {'SA' + sen:'Absolute salinity','SP' + sen: 'Practical Salinity on the PSS-78 scale',
                             'pot_rho' + sen: 'Potential density',
-                            'pt0' + sen:'potential temperature with reference sea pressure (p_ref) = 0 dbar',
+                            'pt' + sen:'potential temperature with reference sea pressure (p_ref) = 0 dbar',
                             'CT' + sen:'Conservative Temperature (ITS-90)'}
        
-        cunits = {'SA' + sen:'g/kg','SP' + sen:'PSU','pot_rho' + sen:'kg/m^3' ,'CT' + sen:'deg C','pt0' + sen:'deg C'}
+        cunits = {'SA' + sen:'g/kg','SP' + sen:'PSU','pot_rho' + sen:'kg/m^3' ,'CT' + sen:'deg C','pt' + sen:'deg C'}
         
         return [cdata,cunits,cnames]
     
@@ -712,10 +712,18 @@ class pycnv(object):
     #
     # Plotting functions
     #
-    def plot(self,xaxis=['CT00','SA00','oxy0','pot_rho00'],yaxis='p',show=True,save=True):
+    def plot(self,xaxis=['CT00','SA00','oxy0','pot_rho00'],colors=None, yaxis='p',show=True,save=True,figsize=[8.27,11.69],save_folder = '.'):
     #def plot(self,xaxis=['CT00','pot_rho00'],yaxis='p',show=True,save=True):
         """ Plots the data in the cnv file using matplotlib
+        Arguments:
+           xaxis:
+           colors:
+           yaxis:
+           show:
+           save:
+           figsize: The size of the figure plotted
         """
+
 
         # Looking for data for y-axis
         try:
@@ -734,9 +742,11 @@ class pycnv(object):
                 return
 
         # Looking for data for x-axis
-        x_data  = []
-        x_names = []
-        x_units = []
+        x_data       = []
+        xaxis_found  = []
+        x_names      = []
+        x_units      = []
+        x_colors     = []        
         for dat_plot in xaxis:
             print(dat_plot)
             if dat_plot in self.data:
@@ -747,16 +757,23 @@ class pycnv(object):
                     x_units.append(self.units[dat_plot])
                 else:
                     x_names.append(self.names_std[dat_plot])
-                    x_units.append(self.units_std[dat_plot])                    
+                    x_units.append(self.units_std[dat_plot])
+
+                xaxis_found.append(dat_plot)
                     
             else:
                 if dat_plot in self.cdata:
-                    print('Found data to plot in cdata:' + dat_plot)                    
+                    print('Found data to plot in cdata:' + dat_plot)
                     x_data.append(self.cdata[dat_plot])
                     x_names.append(self.cnames[dat_plot])
                     x_units.append(self.cunits[dat_plot])
+                    xaxis_found.append(dat_plot)                    
                     
 
+        # Get the colors for the data
+        x_colors = self._get_colors(xaxis_found,colors)
+
+            
         print(len(x_data),len(x_names),len(x_units))
         # Check if we have data to plot
         if len(x_data) == 0:
@@ -764,14 +781,16 @@ class pycnv(object):
             return
 
         fig = pl.figure()
+        # Set the size to din A4
+        fig.set_size_inches(figsize)
         ax = pl.subplot(1,1,1)
         self.figures.append(fig)
-        ax_dict = {'figure':fig,'axes':[ax],'x_data':x_data,'x_names':x_names,'x_units':x_units,'y_data':y_data,'y_names':y_names,'y_units':y_units}
-        
+        ax_dict = {'figure':fig,'axes':[ax],'x_data':x_data,'x_names':x_names,'x_units':x_units,'y_data':y_data,'y_names':y_names,'y_units':y_units,'x_colors':x_colors}
+
+        # Bookkeeping of all the settings of the plotting axes
         self.axes.append(ax_dict)
         # Drawing the data
         self._draw_data(ax_dict)
-        
         
         if save:
             base_name = os.path.basename(self.filename)
@@ -779,16 +798,57 @@ class pycnv(object):
             fig_name  = dstr + '_' + base_name
 
             varstr = ''
-            for dat_plot in x_names:
+            for dat_plot in xaxis_found:
                 varstr += '_' + dat_plot
                 
             #varstr += '_'
             poststr = '.pdf'
-            print('Saving file to file:' + fig_name + varstr + poststr)
+            fig_name_final = save_folder + '/' + fig_name + varstr + poststr
+            print('Saving file to file:' + fig_name)
+            pl.savefig(fig_name_final)
 
         if show:
             pl.show()
 
+    def _get_colors(self,names,colors=None):
+        """ Function to define a color for the given name
+        """
+        cmap = pl.cm.Set1
+        plot_colors = [None]*len(names)
+        # The different data types shall have different colors
+        data_types  = {'salt':['SA','SP','sal'],'temp':['CT','T','pt'],'dens':['pot_rho','sigma'],'oxy':['sbeox','oxy']}
+        data_colors = {'temp':[(255,0,0),(220,20,60),(178,34,34)],'salt':[(0,0,255),(65,105,225),(0,0,205)],'dens':[(0,0,0),(105,105,105),(128,128,128)],'oxy':[(0,128,0),(34,139,34),(85,107,47)]}
+        # Grrr, have to convert it to floats between 0 and 1
+        for col in data_colors:
+            for c in range(len(data_colors[col])):
+                data_colors[col][c] = list(numpy.asarray(data_colors[col][c])/255)
+        #cmap = pl.cm.tab20c
+        #cmap.N
+        num_col = 0
+        for n,name in enumerate(names):
+            for data_type in data_types:
+                if(plot_colors[n] != None):
+                    break
+                for d in data_types[data_type]:
+                    if d in name:
+                        #logger.debug('_get_color(): found data type' + data_type)
+                        print('_get_color(): found data type: ' + d)
+                        if(len(data_colors[data_type])>0):
+                            col = data_colors[data_type].pop()
+                        else:
+                            num_col +=1
+                            col = pl.cm.Set1(num_col)
+                            
+                        plot_colors[n] = col
+                        break
+
+            if(plot_colors == None):
+                num_col +=1
+                col = pl.cm.Set1(num_col)                
+                plot_colors[n] = col
+        
+
+        return plot_colors
         
     def _draw_data(self,data):
         """Draws in the axes all the data defined in the given dictionary and
@@ -801,17 +861,19 @@ the spines of the additional axes such that all ticks are visible
         ax     = data['axes'][0]
         xdata  = data['x_data']
         xnames = data['x_names']
-        xunits = data['x_units']        
+        xunits = data['x_units']
+        xcolors= data['x_colors']        
         ydata  = data['y_data']
         naxes  = len(xdata)
-        
+
         # Get the position of the axes
         posx = ax.get_position().get_points()[:,0]
         posy = ax.get_position().get_points()[:,1]
         # Recalculate the axes position in y-direction for the
         # additional data to be plotted
         # Each additional label/ticks needs additional dy
-        dy        = 0.2
+        dy        = 0.1
+        dy_fig    = 0.07
         y_bottom  = []
         y_top     = []
         i_bottom  = -1
@@ -828,7 +890,10 @@ the spines of the additional axes such that all ticks are visible
                 y_top.append(1 + i_top * dy)
 
 
-        pos_new = [.1,.3,.8,.5]
+        pos_new     = [.05,.05,.9,.9]
+        y0_new      = (i_bottom+1) * dy_fig
+        height_new  = 1 - (i_top+1) * dy_fig - y0_new
+        pos_new = [ax.get_position().x0,y0_new,ax.get_position().width,height_new]
         ax.set_position(pos_new)                
         # Create new axes
         for i in range(0,naxes):
@@ -853,27 +918,33 @@ the spines of the additional axes such that all ticks are visible
                 print('y_bottom',y_bottom[i])
                 axtmp.spines["bottom"].set_position(("axes", y_bottom[i]))
                 axtmp.spines["top"].set_visible(False)
-                axtmp.spines["bottom"].set_visible(True)                
+                axtmp.spines["bottom"].set_color(xcolors[i])                
+                axtmp.spines["bottom"].set_visible(True)
                 axtmp.xaxis.set_ticks_position("bottom")
+                axtmp.xaxis.set_label_position('bottom') 
             else:
                 print('y_top',y_top[i])
                 axtmp.spines["top"].set_position(("axes", y_top[i]))
                 axtmp.spines["top"].set_visible(True)
-                axtmp.spines["top"].set_color('r')
+                axtmp.spines["top"].set_color(xcolors[i])
                 axtmp.spines["bottom"].set_visible(False)                
                 axtmp.xaxis.set_ticks_position("top")
+                axtmp.xaxis.set_label_position('top') 
                 
 
             
         # Plotting the data
-        print(data['axes'])
-        print(data['axes'][1] == data['axes'][2])
+        # Ylabel
+        axtmp = data['axes'][0]
+        axtmp.set_ylabel(data['y_names'])
         for i in range(0,naxes):
             axtmp = data['axes'][i]
-            pltmp = axtmp.plot(xdata[i],ydata)
-            pl.xlabel('ffdsd')
-            axtmp.xaxis.label.set_color(pltmp[0].get_color())
-            axtmp.xaxis.label.set_label(xnames[i])
+            pltmp = axtmp.plot(xdata[i],ydata,color=xcolors[i])
+            axtmp.invert_yaxis()
+            axtmp.xaxis.label.set_color(xcolors[i])
+            axtmp.tick_params(axis='x', colors=xcolors[i])
+            #axtmp.xaxis.label.set_label(xnames[i])
+            axtmp.set_xlabel(xnames[i] + ' [' + xunits[i] + ']')
             
         self._update_plot_style(data)
 
