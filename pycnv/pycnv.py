@@ -712,7 +712,7 @@ class pycnv(object):
     #
     # Plotting functions
     #
-    def plot(self,xaxis=['CT00','SA00','oxy0','pot_rho00'],xlims=None,colors=None, yaxis='p',show=True,save=True,figsize=[8.27,11.69],save_folder = '.'):
+    def plot(self,xaxis=['CT00','SA00','oxy0','pot_rho00'],xlims=None,colors=None, yaxis='p',ylim=None,show=True,save=True,figsize=[8.27,11.69],save_folder = '.'):
     #def plot(self,xaxis=['CT00','pot_rho00'],yaxis='p',show=True,save=True):
         """ Plots the data in the cnv file using matplotlib
         Arguments:
@@ -720,12 +720,12 @@ class pycnv(object):
            xlims: The xlimits for the data to plot, if only one list (e.g. [4,5.5]) is given, the range is valid for all data, otherwise a list with the same length as the data to plot is expected (e.g. [[1,2],[3,4],None]), None results in matplotlib automatic xlim
            colors:
            yaxis:
+           ylim: The ylimit of the plot, None results in autoscaling
            show:
            save:
            figsize: The size of the figure plotted
 
         """
-
         # Looking for data for y-axis
         try:
             y_data = self.cdata[yaxis]
@@ -808,7 +808,7 @@ class pycnv(object):
         fig.set_size_inches(figsize)
         ax = pl.subplot(1,1,1)
         self.figures.append(fig)
-        ax_dict = {'figure':fig,'axes':[ax],'x_data':x_data,'x_names':x_names,'x_units':x_units,'y_data':y_data,'y_names':y_names,'y_units':y_units,'x_colors':x_colors,'x_lims':x_lims}
+        ax_dict = {'figure':fig,'axes':[ax],'x_data':x_data,'x_names':x_names,'x_units':x_units,'y_data':y_data,'y_names':y_names,'y_units':y_units,'x_colors':x_colors,'x_lims':x_lims,'y_lim':ylim}
 
         # Bookkeeping of all the settings of the plotting axes
         self.axes.append(ax_dict)
@@ -888,6 +888,7 @@ the spines of the additional axes such that all ticks are visible
         xcolors= data['x_colors']
         xlims= data['x_lims']                
         ydata  = data['y_data']
+        ylim   = data['y_lim']
         naxes  = len(xdata)
 
         # Get the position of the axes
@@ -962,8 +963,15 @@ the spines of the additional axes such that all ticks are visible
         axtmp.set_ylabel(data['y_names'])
         for i in range(0,naxes):
             axtmp = data['axes'][i]
-            pltmp = axtmp.plot(xdata[i],ydata,color=xcolors[i])
-            axtmp.invert_yaxis()
+            if ylim is None:
+                axtmp.invert_yaxis()
+                ind = range(0,len(ydata))
+            else:
+                axtmp.set_ylim(ylim)
+                ind = (ydata >= min(ylim)) & (ydata <= max(ylim))
+                
+            pltmp = axtmp.plot(xdata[i][ind],ydata[ind],color=xcolors[i])
+
             if xlims[i] is not None:
                 print('ranges!')
                 axtmp.set_xlim(xlims[i])
