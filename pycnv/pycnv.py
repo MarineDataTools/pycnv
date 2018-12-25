@@ -712,18 +712,19 @@ class pycnv(object):
     #
     # Plotting functions
     #
-    def plot(self,xaxis=['CT00','SA00','oxy0','pot_rho00'],colors=None, yaxis='p',show=True,save=True,figsize=[8.27,11.69],save_folder = '.'):
+    def plot(self,xaxis=['CT00','SA00','oxy0','pot_rho00'],xlims=None,colors=None, yaxis='p',show=True,save=True,figsize=[8.27,11.69],save_folder = '.'):
     #def plot(self,xaxis=['CT00','pot_rho00'],yaxis='p',show=True,save=True):
         """ Plots the data in the cnv file using matplotlib
         Arguments:
            xaxis:
+           xlims: The xlimits for the data to plot, if only one list (e.g. [4,5.5]) is given, the range is valid for all data, otherwise a list with the same length as the data to plot is expected (e.g. [[1,2],[3,4],None]), None results in matplotlib automatic xlim
            colors:
            yaxis:
            show:
            save:
            figsize: The size of the figure plotted
-        """
 
+        """
 
         # Looking for data for y-axis
         try:
@@ -746,7 +747,8 @@ class pycnv(object):
         xaxis_found  = []
         x_names      = []
         x_units      = []
-        x_colors     = []        
+        x_colors     = []
+        x_lims     = []        
         for dat_plot in xaxis:
             print(dat_plot)
             if dat_plot in self.data:
@@ -770,6 +772,27 @@ class pycnv(object):
                     xaxis_found.append(dat_plot)                    
                     
 
+        # Get the xlims
+        if True:
+            for n,dat_plot in enumerate(xaxis_found):
+                # Check if we have one range or a list of many ranges
+                if xlims==None:
+                    x_lims.append(None)
+                    
+                elif(len(xlims) == 2):
+                    if (xlims[0] == None) and (xlims[1] == None): # Two Nones
+                        x_lims.append(xlims[n])
+                        
+                    elif type(xlims[0]) != list: # Two numbers
+                        x_lims.append(xlims)
+
+                elif(n < len(xlims)):
+                    x_lims.append(xlims[n])
+                else:
+                    x_lims.append(None)
+
+
+            
         # Get the colors for the data
         x_colors = self._get_colors(xaxis_found,colors)
 
@@ -785,7 +808,7 @@ class pycnv(object):
         fig.set_size_inches(figsize)
         ax = pl.subplot(1,1,1)
         self.figures.append(fig)
-        ax_dict = {'figure':fig,'axes':[ax],'x_data':x_data,'x_names':x_names,'x_units':x_units,'y_data':y_data,'y_names':y_names,'y_units':y_units,'x_colors':x_colors}
+        ax_dict = {'figure':fig,'axes':[ax],'x_data':x_data,'x_names':x_names,'x_units':x_units,'y_data':y_data,'y_names':y_names,'y_units':y_units,'x_colors':x_colors,'x_lims':x_lims}
 
         # Bookkeeping of all the settings of the plotting axes
         self.axes.append(ax_dict)
@@ -862,7 +885,8 @@ the spines of the additional axes such that all ticks are visible
         xdata  = data['x_data']
         xnames = data['x_names']
         xunits = data['x_units']
-        xcolors= data['x_colors']        
+        xcolors= data['x_colors']
+        xlims= data['x_lims']                
         ydata  = data['y_data']
         naxes  = len(xdata)
 
@@ -932,7 +956,6 @@ the spines of the additional axes such that all ticks are visible
                 axtmp.xaxis.set_label_position('top') 
                 
 
-            
         # Plotting the data
         # Ylabel
         axtmp = data['axes'][0]
@@ -941,6 +964,11 @@ the spines of the additional axes such that all ticks are visible
             axtmp = data['axes'][i]
             pltmp = axtmp.plot(xdata[i],ydata,color=xcolors[i])
             axtmp.invert_yaxis()
+            if xlims[i] is not None:
+                print('ranges!')
+                axtmp.set_xlim(xlims[i])
+            else:
+                print('no ranges!')
             axtmp.xaxis.label.set_color(xcolors[i])
             axtmp.tick_params(axis='x', colors=xcolors[i])
             #axtmp.xaxis.label.set_label(xnames[i])
