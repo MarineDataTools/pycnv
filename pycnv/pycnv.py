@@ -554,7 +554,8 @@ class pycnv(object):
 
             if("* NMEA Latitude" in l) or ("* NMEA Longitude" in l):
                 pos_str = l.rsplit('=')[1]
-                pos_str = pos_str.replace("\n","").replace("\r","") 
+                pos_str = pos_str.replace("\n","").replace("\r","")
+                SIGN = numpy.NaN
                 if("S" in pos_str):
                     SIGN = -1.
                     CHAR_NORTH = 'S'
@@ -567,7 +568,7 @@ class pycnv(object):
                     CHAR_NORTH = 'W'
                 if("E" in pos_str):
                     SIGN = 1.
-                    CHAR_NORTH = 'E'                    
+                    CHAR_NORTH = 'E'
                     
                 pos_str = pos_str.replace("  "," ")
                 while(pos_str[0] == " "):
