@@ -111,7 +111,7 @@ Plot the in Situ temperature and the conservative temperature of a CTD cast:
 	  
 	  import pycnv
 	  import pylab as pl
-	  fname='test'cnv' # A sebaird cnv file
+	  fname='test.cnv' # A sebaird cnv file
 	  p = pycnv.pycnv(fname)
 	  pl.figure(1)
 	  pl.clf()
@@ -140,6 +140,12 @@ saves it into the file TF271.txt  (in terminal):
 	  
 	  pycnv_sum_folder --data_folder cnv_data --station TF0271 5000 -p -f TF271.txt
 
+
+Show and plot conservative temperature, salinity and potential density of a cnv file into a pdf:
+
+.. code:: bash
+	  
+	  pycnv --plot show,save,CT00,SA00,pot_rho00 ctd_cast.cnv
 
 
 Interpolate all CTD casts on station TF0271 onto the same pressure axis and make a netCDF out of it:
