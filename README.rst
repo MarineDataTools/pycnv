@@ -5,6 +5,18 @@ Python toolbox to read and process Seabird_ cnv files.
 
 These text files are the standard output files of the Seabird CTD software.
 
+The main purpose for pycnv is to create a standardised interface for
+slightly differing naming conventions of sensors in the cnv files and
+the usage of the `Gibb Sea Water Toolbox (gsw) <https://github.com/TEOS-10/GSW-Python>`_
+for the calculation of all
+derived parameters as practical salinity, absolute salinity, potential
+and conservative temperature or density. For this purpose pycnv does
+only need pressure, conductivity and temperature, all other properties
+will be derived from these. Furthermore pycnv will take care for a
+different absolute salinity computation in the Baltic Sea, by
+automatically checking of a cast was made in the Baltic Sea and
+choosing the correct function.
+
 
 Install
 -------
@@ -76,6 +88,8 @@ FEATURES
 
 - Possibility to provide an own function for parsing custom header
   information.
+
+- Plotting of the profile using `matplotlib <https://matplotlib.org>`_
 
 
 
