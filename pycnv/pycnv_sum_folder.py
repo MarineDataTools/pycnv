@@ -37,7 +37,7 @@ def get_stations():
     stations_yaml = yaml.safe_load(f_stations)
     return stations_yaml['stations']
     
-def get_all_valid_files(DATA_FOLDER, loglevel = logging.INFO, station = None):
+def get_all_valid_files(DATA_FOLDER, loglevel = logging.INFO, station = None, save_summary = False):
     """
     Args:
        DATA_FOLDER: Either list of data_folder or string of one data_folder
@@ -78,28 +78,32 @@ def get_all_valid_files(DATA_FOLDER, loglevel = logging.INFO, station = None):
 
     logger.info('Found ' + str(len(matches)) + ' cnv files in folder(s):' + str(DATA_FOLDER))
     if(len(matches) == 0):
-        return {'files':[],'dates':[]}
-    save_file  = []
-    files_date = []
+        return {'files':[],'dates':[],'lon':[],'lat':[]}
+    save_file       = []
+    files_date      = []
     file_names_save = []
+    files_lon_save  = []
+    files_lat_save  = []        
     files_date_save = []
+    files_summary   = []
     if(len(matches) > 0):
         # Write the header of the file
-        print(matches[0])
+        print('Hallo',matches[0])
         cnv = pycnv(matches[0],verbosity=logging.CRITICAL)
 
         # Loop through all files and make summary
+        nf = len(matches)
         for i,f in enumerate(matches):
-            logger.debug('Parsing file: ' + str(f))
+            logger.info('Parsing file ' + str(i) +'/' + str(nf) + ': ' + str(f))
             cnv = pycnv(f,verbosity=loglevel)
             if(cnv.valid_cnv):
                 files_date.append(cnv.date)
                 summary = cnv.get_summary()
                 FLAG_GOOD = False
                 # Check if we are within a distance
+                lon = cnv.lon
+                lat = cnv.lat                
                 if(FLAG_DIST):
-                    lon = cnv.lon
-                    lat = cnv.lat
                     if(not(numpy.isnan(lon)) and not(numpy.isnan(lat))):
                         az12,az21,dist = g.inv(lon,lat,londist,latdist)
                         if(dist < distdist):
@@ -112,14 +116,22 @@ def get_all_valid_files(DATA_FOLDER, loglevel = logging.INFO, station = None):
                     save_file.append(True)
                     file_names_save.append(f)
                     files_date_save.append(cnv.date)
+                    files_lon_save.append(lon)
+                    files_lat_save.append(lat)
+                    files_summary.append(summary)
                 else:
                     save_file.append(False)
 
         # Save the with respect to date sorted file
-        logger.debug('Writing file')
+        logger.info('Read all files')
         ind_sort = numpy.argsort(files_date_save)
         file_names_save_sort = list(numpy.asarray(file_names_save)[ind_sort])
-        retdata={'files':file_names_save_sort,'dates':list(numpy.asarray(files_date_save)[ind_sort])}
+        retdata  = {'files':file_names_save_sort,'dates':list(numpy.asarray(files_date_save)[ind_sort]),'lon':list(numpy.asarray(files_lon_save)[ind_sort]),'lat':list(numpy.asarray(files_lat_save)[ind_sort])}
+
+        if save_summary:
+            summary_array = numpy.asarray(files_summary)[ind_sort]
+            retdata['summary'] = summary_array
+        
         return retdata
 
 
@@ -127,7 +139,7 @@ def main():
 
     example1 = 'Example (searching in folders fahrten.2011 and fahrten.2012 for stations TF0286 within a radius of 5000m: pycnv_sum_folder -d fahrten.201[12]/ -f tf286.txt --station TF0286 5000'
 
-    desc             = 'A pycnv tool which is recursively searching through the given data folder and searching for cnv files. Found cnv files are parsed and a summary is written to the file given by --filename.'
+    desc             = 'A pycnv tool which is recursively searching through the given data folder and searching for cnv files. Found cnv files are parsed and a summary is written to the file given by --filename. '
     desc += example1
 
     data_help        = 'The data path(es) to be searched'
@@ -272,10 +284,31 @@ def main():
         logger.critical('Specify a data path to search for cnv files ... exiting')
         sys.exit(0)
 
+    # Read in all potential cnv files, this "double" reading is (probably)
+    # necessary for sorting them without saving all the data into RAM
+    # TODO, if more speed is needed more data can be saved into cnv_data
+    logger.info('Checking for double datasets')
+    cnv_data = get_all_valid_files(DATA_FOLDER, loglevel = loglevel, station = constraint_station, save_summary = True)
+    # Searching for files with the same origin (but probably different postprocessing of the seabird software)
+    lon_d      = numpy.asarray(cnv_data['lon'])
+    lat_d      = numpy.asarray(cnv_data['lat'])
+    date_d     = numpy.asarray(cnv_data['dates'])
+    checked_d  = numpy.zeros(len(lon_d),dtype=int)
+    num_d      = numpy.zeros(len(lon_d),dtype=int)
 
-    cnv_data = get_all_valid_files(DATA_FOLDER,loglevel=loglevel, station = constraint_station)
-    file_names_save = cnv_data['files']
+    for i in range(len(lon_d)):
+        if(checked_d[i] == 0):
+            checked_d[i]       = 1
+            ind_date           = date_d[i] == date_d
+            ind_lon            = lon_d[i] == lon_d
+            ind_lat            = lat_d[i] == lat_d
+            ind_all            = ind_date & ind_lon & ind_lat
+            checked_d[ind_all] = 1
+            num_d[ind_all]     = num_d.max() + 1
+
     
+    file_names_save = cnv_data['files']
+    # Save the valid files into the specified file or print it to console
     if True:
         num_wr = 0
         for nf,fname in enumerate(file_names_save):
@@ -283,10 +316,21 @@ def main():
             #if(FLAG_GOOD):
                 #cnv = pycnv.pycnv(matches[ind],verbosity=logging.CRITICAL)
             if True:
-                cnv = pycnv(fname,verbosity=logging.CRITICAL)
-                cnv_header = cnv.get_summary(header=True)                
-                summary = cnv.get_summary()
+                if(nf == 0):
+                    cnv        = pycnv(fname,verbosity=logging.CRITICAL)
+                    cnv_header = cnv.get_summary(header=True)                
+                    #summary    = cnv.get_summary()
+                    
+                summary = cnv_data['summary'][nf]
+                    
+                # Adding information about double files
+                sep = ','
+                summary = '{:5d}'.format(nf) + sep + '{:5d}'.format(num_d[nf]) + sep + summary
+                cnv_header = 'num file'+ sep + 'num double' + sep + cnv_header
                 if(print_summary):
+                    if(nf == 0):
+                        print(cnv_header)
+                        
                     print(summary)
                 if(filename != None):
                     if(nf == 0):
@@ -301,6 +345,7 @@ def main():
         print('No files found ... ')
 
 
+    logger.info('Read ' +str(len(file_names_save)) + ' files (' + str(num_d.max()) + ' with unique datasets)')
     if(filename != None):
         logger.info('Wrote ' +str(num_wr) + ' datasets into file:' + filename)
         fi.close()

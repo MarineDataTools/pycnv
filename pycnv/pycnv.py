@@ -269,8 +269,8 @@ def parse_iow_header(header,pycnv_object=None):
             pycnv_object.lat = iow_data['lat']
             pycnv_object.lon = iow_data['lon']
         except:
-            pycnv_object.lat = numpy.NaN
-            pycnv_object.lon = numpy.NaN
+            pass
+        
         # If no date was found, try the IOW date
         if pycnv_object.date == None:
             try:
@@ -552,6 +552,42 @@ class pycnv(object):
                 except Exception as e:
                     logger.warning('Could not decode time: ( ' + datum + ' )' + str(e))
 
+            if("* NMEA Latitude" in l) or ("* NMEA Longitude" in l):
+                pos_str = l.rsplit('=')[1]
+                pos_str = pos_str.replace("\n","").replace("\r","") 
+                if("S" in pos_str):
+                    SIGN = -1.
+                    CHAR_NORTH = 'S'
+                if("N" in pos_str):
+                    SIGN = 1.
+                    CHAR_NORTH = 'N'
+
+                if("W" in pos_str):
+                    SIGN = -1.
+                    CHAR_NORTH = 'W'
+                if("E" in pos_str):
+                    SIGN = 1.
+                    CHAR_NORTH = 'E'                    
+                    
+                pos_str = pos_str.replace("  "," ")
+                while(pos_str[0] == " "):
+                    pos_str = pos_str[1:]                    
+
+                pos_str_deg = pos_str.split(" ")[0]
+                pos_str_min = pos_str.split(" ")[1]
+
+                pos = SIGN * float(pos_str_deg) + float(pos_str_min)/60.
+                if("* NMEA Latitude" in l):
+                    self.lat = pos
+                    #print('lat',self.lat)
+                if("* NMEA Longitude" in l):
+                    self.lon = pos
+                    #print('lon',self.lon)
+                #print(pos_str,pos_str_deg,pos_str_min,self.lat)
+                #input('fds')
+
+
+
             
             if "# start_time = " in l:
                 # Like this:
@@ -666,14 +702,14 @@ class pycnv(object):
         rstr = ""
         # Print the header
         if(header):
-            rstr += 'Date' + sep
-            rstr += 'Lat' + sep
-            rstr += 'Lon' + sep
+            rstr += 'date' + sep
+            rstr += 'lat' + sep
+            rstr += 'lon' + sep
             rstr += 'p min' + sep
             rstr += 'p max' + sep
             rstr += 'num p samples' + sep
             rstr += 'baltic' + sep
-            rstr += 'file'  + sep
+            rstr += 'file'  #+ sep
         # Print the file information
         else:
             try:
@@ -682,8 +718,8 @@ class pycnv(object):
                 rstr += 'NaN' + sep
 
             try:
-                rstr += '{:03.5f}'.format(self.lat) + sep
-                rstr += '{:03.5f}'.format(self.lon) + sep
+                rstr += '{:08.5f}'.format(self.lat) + sep
+                rstr += '{:09.5f}'.format(self.lon) + sep
                 
 
             except:
@@ -706,7 +742,7 @@ class pycnv(object):
             rstr += '{: 8.2f}'.format(pmax) + sep
             rstr += '{: 6d}'.format(num_samples) + sep
             rstr += '{: 1d}'.format(int(self.baltic)) + sep            
-            rstr += self.filename + sep
+            rstr += self.filename #+ sep
                 
         return rstr
 
