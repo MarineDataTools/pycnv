@@ -125,8 +125,13 @@ def get_all_valid_files(DATA_FOLDER, loglevel = logging.INFO, station = None, sa
                     save_file.append(False)
 
         # Save the with respect to date sorted file
-        logger.info('Read all files')
-        ind_sort = numpy.argsort(files_date_save)
+        logger.info('Sorting all files')
+        # Replace invalid dates with an obviously wrong date to be able to sort them
+        for i in range(len(files_date_save)):
+            if(files_date_save[i] == None):
+                files_date_save[i] = datetime.datetime(1,1,1).replace(tzinfo=timezone('UTC'))
+
+        ind_sort = numpy.argsort(files_date_save)                
         file_names_save_sort = list(numpy.asarray(file_names_save)[ind_sort])
         retdata  = {'files':file_names_save_sort,'dates':list(numpy.asarray(files_date_save)[ind_sort]),'lon':list(numpy.asarray(files_lon_save)[ind_sort]),'lat':list(numpy.asarray(files_lat_save)[ind_sort])}
 
@@ -298,10 +303,6 @@ def main():
     checked_d  = numpy.zeros(len(lon_d),dtype=int)
     num_d      = numpy.zeros(len(lon_d),dtype=int)
 
-    # Replace invalid dates with an obviously wrong date
-    for i in range(len(lon_d)):
-        if(date_d[i] == None):
-            date_d[i] = datetime.datetime(1,1,1).replace(tzinfo=timezone('UTC'))
                     
     for i in range(len(lon_d)):
         if(checked_d[i] == 0):
