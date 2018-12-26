@@ -20,7 +20,7 @@ with open(version_file) as version_f:
 # TODO: add NMEA position, time
 
 # Setup logging module
-logging.basicConfig(stream=sys.stderr, level=logging.WARNING)
+logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 logger = logging.getLogger('pycnv')
 
 # Regions to test if we are in the Baltic Sea for different equation of state
@@ -373,14 +373,16 @@ class pycnv(object):
                 for n,c in enumerate(self.channels):
                     names.append(c['name'])
                     formats.append('float')
-                    titles.append(c['title'])
+                    titles.append(c['name_std'])
                     self.data[c['name']]  = self.raw_data[:,n]
-                    if(c['title'] not in ('i' + str(c['index']))):
-                       self.data[c['title']]  = self.raw_data[:,n]
+                    #if(c['name_std'] not in ('i' + str(c['index']))):
+                    #   self.data[c[name_std]]  = self.raw_data[:,n]
+                    if(c['name_std'] != None):
+                        self.data[c['name_std']]  = self.raw_data[:,n]
                     self.names[c['name']] = c['long_name']
                     self.units[c['name']] = c['unit']
-                    self.names_std[c['title']] = c['long_name']
-                    self.units_std[c['title']] = c['unit']
+                    self.names_std[c['name_std']] = c['name']
+                    self.units_std[c['name_std']] = c['unit']
 
 
                 # Compute absolute salinity and potential density with the gsw toolbox
@@ -453,8 +455,6 @@ class pycnv(object):
                                 self.cunits[oxy_name] = 'umol/l'
                                 self.cnames[oxy_name] = self.names_std[oxy_name]
                                 
-                                
-                
                 
             else:
                 logger.warning('Different number of columns in data section as defined in header, this is bad ...')
@@ -580,7 +580,8 @@ class pycnv(object):
 
                 # Add a dummy title, this will be later filled with a
                 # useful name
-                sensor['title'] = 'i' + str(sensor['index'])
+                #sensor['name_std'] = 'i' + str(sensor['index'])
+                sensor['name_std'] = None
                 if(len(lsp[1].split(': ')) > 1): # if we have a long name and unit
                     sensor['long_name'] = lsp[1].split(': ')[1]
                     unit = lsp[1].split(': ')[1]
@@ -619,7 +620,7 @@ class pycnv(object):
                     break
                 for ct in self.channels:
                     if(c in ct['name']):
-                        ct['title'] = r['name'] # Save the alternative name in the channel
+                        ct['name_std'] = r['name'] # Save the alternative name in the channel
                         logger.debug('Found channel' + str(ct) + ' ' + str(c))
                         found = True
                         break
@@ -708,11 +709,46 @@ class pycnv(object):
             rstr += self.filename + sep
                 
         return rstr
+
+    def get_variables(self):
+        """
+        Returns a string with all available variables, separated between the originally existing variables within the cnv file (stored in data) and the ones computed and stored in cdata)
+        """
+        rstr = ''        
+        rstr += '#Original variables stored in the file (and in "data"):\n'
+        rstr += '#\n'
+        rstr += '#\n'        
+        rstr += '#Structure:\n'
+        rstr += '#Index,name (as in cnv file),standard name (mapped by pycnv), long_name, unit (as in cnv file):\n'
+
+        for n,var in enumerate(self.channels):
+            var_name = var['name']
+            var_long_name = var['long_name']            
+            var_std = var['name_std']
+            if(var_std == None):
+                var_std = ''            
+            unit = var['unit']
+            if(unit == None):
+                unit = ''
+            rstr += str(n) + ';' + var_name + ';' + var_std + ';' + var_long_name + ';' + unit + '\n'
+
+
+        rstr += '#Computed variables stored in "cdata":\n'
+        rstr += '#\n'
+        rstr += '#\n'        
+        rstr += '#Structure:\n'
+        rstr += '#Index,name, long_name, unit (as in cnv file):\n'        
+        for n,var in enumerate(self.cdata.keys()):
+            rstr += var + ';' + self.cnames[var] + ';' + self.cunits[var] + '\n'
+
+        return rstr
     
     #
     # Plotting functions
     #
-    def plot(self,xaxis=['CT00','SA00','oxy0','pot_rho00'],xlims=None,colors=None, yaxis='p',ylim=None,show=True,save=True,figsize=[8.27,11.69],save_folder = '.'):
+    def plot(self,xaxis=['CT00','SA00','oxy0','pot_rho00'],xlims=None,colors=None,
+         yaxis='p',ylim=None,show=False,save=False,figsize=[8.27,11.69],fig_prefix
+         = './'):
     #def plot(self,xaxis=['CT00','pot_rho00'],yaxis='p',show=True,save=True):
         """ Plots the data in the cnv file using matplotlib
         Arguments:
@@ -724,6 +760,7 @@ class pycnv(object):
            show:
            save:
            figsize: The size of the figure plotted
+           fig_prefix: The prefix put before the figname (this can be a folder together with a file prefix)
 
         """
         # Looking for data for y-axis
@@ -750,7 +787,6 @@ class pycnv(object):
         x_colors     = []
         x_lims     = []        
         for dat_plot in xaxis:
-            print(dat_plot)
             if dat_plot in self.data:
                 print('Found data to plot in data:' + dat_plot)                
                 x_data.append(self.data[dat_plot])
@@ -765,7 +801,7 @@ class pycnv(object):
                     
             else:
                 if dat_plot in self.cdata:
-                    print('Found data to plot in cdata:' + dat_plot)
+                    logger.debug('Found data to plot in cdata:' + dat_plot)
                     x_data.append(self.cdata[dat_plot])
                     x_names.append(self.cnames[dat_plot])
                     x_units.append(self.cunits[dat_plot])
@@ -797,7 +833,6 @@ class pycnv(object):
         x_colors = self._get_colors(xaxis_found,colors)
 
             
-        print(len(x_data),len(x_names),len(x_units))
         # Check if we have data to plot
         if len(x_data) == 0:
             logger.warning('plot():Did not find valid x-data:')
@@ -826,8 +861,8 @@ class pycnv(object):
                 
             #varstr += '_'
             poststr = '.pdf'
-            fig_name_final = save_folder + '/' + fig_name + varstr + poststr
-            print('Saving file to file:' + fig_name)
+            fig_name_final = fig_prefix + fig_name + varstr + poststr
+            logger.info('Saving file to file: ' + fig_name_final)
             pl.savefig(fig_name_final)
 
         if show:
@@ -840,7 +875,7 @@ class pycnv(object):
         plot_colors = [None]*len(names)
         # The different data types shall have different colors
         data_types  = {'salt':['SA','SP','sal'],'temp':['CT','T','pt'],'dens':['pot_rho','sigma'],'oxy':['sbeox','oxy']}
-        data_colors = {'temp':[(255,0,0),(220,20,60),(178,34,34)],'salt':[(0,0,255),(65,105,225),(0,0,205)],'dens':[(0,0,0),(105,105,105),(128,128,128)],'oxy':[(0,128,0),(34,139,34),(85,107,47)]}
+        data_colors = {'temp':[(255,0,0),(220,20,60),(178,34,34)],'salt':[(0,0,255),(65,105,225),(0,0,205)],'dens':[(0,0,0),(50,50,50),(128,128,128)],'oxy':[(0,128,0),(34,139,34),(85,107,47)]}
         # Grrr, have to convert it to floats between 0 and 1
         for col in data_colors:
             for c in range(len(data_colors[col])):
@@ -917,7 +952,7 @@ the spines of the additional axes such that all ticks are visible
 
         pos_new     = [.05,.05,.9,.9]
         y0_new      = (i_bottom+1) * dy_fig
-        height_new  = 1 - (i_top+1) * dy_fig - y0_new
+        height_new  = .99 - (i_top+1) * dy_fig - y0_new
         pos_new = [ax.get_position().x0,y0_new,ax.get_position().width,height_new]
         ax.set_position(pos_new)                
         # Create new axes
@@ -942,7 +977,8 @@ the spines of the additional axes such that all ticks are visible
             if(i%2 == 0):
                 print('y_bottom',y_bottom[i])
                 axtmp.spines["bottom"].set_position(("axes", y_bottom[i]))
-                axtmp.spines["top"].set_visible(False)
+                if(naxes > 1): # Only remove the top spines if we have more than one axes
+                    axtmp.spines["top"].set_visible(False)
                 axtmp.spines["bottom"].set_color(xcolors[i])                
                 axtmp.spines["bottom"].set_visible(True)
                 axtmp.xaxis.set_ticks_position("bottom")
@@ -1011,35 +1047,37 @@ def test_pycnv():
 
 # Main function
 def main():
-    sum_help = 'Gives a csv compatible summary'
-    sumhead_help = 'Gives the header to the csv compatible summary'
+    sum_help         = 'Gives a csv compatible summary'
+    plot_help        = 'Plots the cnv file, list the parameters in a comma separated list, e.g. --plot CT00,pt00,oxy use the arguments "show" to immidiately show the figure (will halt the code until the figure is closed) and/or "save" to save the figure'
+    plot_prefix_help = 'The prefix before the filename, standars is "./", this is usefule to define a path and/or a fie prefix, e.g. --plot_prefix figures/ctd_casts_of_important_cruise__'
+    var_help         = 'Lists all the available variables within the file, separated between the orignal data within the file (data) and the computed data (cdata)'        
+    sumhead_help     = 'Gives the header to the csv compatible summary'
     parser = argparse.ArgumentParser()
-    parser.add_argument('filename')    
+    parser.add_argument('--variables', '-va', action='store_true', help=var_help)    
     parser.add_argument('--summary', '-s', action='store_true', help=sum_help)
     parser.add_argument('--summary_header', '-sh', action='store_true', help=sumhead_help)
+    #https://stackoverflow.com/questions/13346540/argparse-optional-argument-before-positional-argument    
+    parser.add_argument('--plot', '-p', nargs='?', help=plot_help)
+    parser.add_argument('--plot_prefix', '-pre', nargs='?', help=plot_prefix_help)    
     parser.add_argument('--verbose', '-v', action='count')
     #parser.add_argument('--version', action='store_true')
     parser.add_argument('--version', action='version', version='%(prog)s ' + version)
+    parser.add_argument('filename')    
     args = parser.parse_args()
     
     if(args.verbose == None):
-        loglevel = logging.CRITICAL
+        loglevel = logging.WARNING        
     elif(args.verbose == 1):
-        loglevel = logging.WARNING
-    elif(args.verbose == 2):
         loglevel = logging.INFO        
-    elif(args.verbose > 2):
-        loglevel = logging.DEBUG
+    elif(args.verbose == 2):
+        loglevel = logging.DEBUG        
     else:
         loglevel = logging.INFO
 
 
     logger.setLevel(loglevel)
 
-    print(args.version)
-    if(args.version != None):
-        print(version)
-    
+
     filename = args.filename
 
     print_summary = args.summary
@@ -1047,17 +1085,47 @@ def main():
     
     if(filename != None):
         cnv = pycnv(filename,verbosity=loglevel)
-        print(cnv)
     else:
         #logger.critical('Need a filename')
         print(parser.print_help())
 
+
+    if(args.variables):
+        summary = cnv.get_variables()
+        print(summary)
+
     if(print_summary_header):
-        summary = cnv._get_summary(header=True)
+        summary = cnv.get_summary(header=True)
         print(summary)
     if(print_summary):
-        summary = cnv._get_summary()
+        summary = cnv.get_summary()
         print(summary)
+
+    # Plot the file
+
+        plot_prefix = args.plot_prefix
+        
+    if(args.plot != None):
+        FLAG_SHOW = False
+        FLAG_SAVE = False
+        variables_plot = []
+        for var in args.plot.split(','):
+            if(var.upper() == 'SHOW'):
+                FLAG_SHOW = True
+            elif( var.upper() == 'SAVE'):
+                FLAG_SAVE = True
+            else:
+                variables_plot.append(var)
+
+        print('Plot prefix:',args.plot_prefix)
+        if(args.plot_prefix == None):
+            plot_prefix = "./"
+        else:
+            plot_prefix = args.plot_prefix
+
+        cnv.plot(xaxis=variables_plot,show=FLAG_SHOW,save=FLAG_SAVE,fig_prefix=plot_prefix)
+
+            
 
 
 #pc = pycnv("/home/holterma/data/redox_drive/iow_data/fahrten.2011/06EZ1108.DTA/vCTD/DATA/cnv/0001_01.cnv")
