@@ -10,6 +10,8 @@ import argparse
 import logging
 import pkg_resources
 import yaml
+from pytz import timezone
+import datetime
 
 
 # Get the version
@@ -296,6 +298,11 @@ def main():
     checked_d  = numpy.zeros(len(lon_d),dtype=int)
     num_d      = numpy.zeros(len(lon_d),dtype=int)
 
+    # Replace invalid dates with an obviously wrong date
+    for i in range(len(lon_d)):
+        if(date_d[i] == None):
+            date_d[i] = datetime.datetime(1,1,1).replace(tzinfo=timezone('UTC'))
+                    
     for i in range(len(lon_d)):
         if(checked_d[i] == 0):
             checked_d[i]       = 1
