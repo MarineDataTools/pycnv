@@ -1101,10 +1101,9 @@ def main():
         summary = cnv.get_summary()
         print(summary)
 
+    #
     # Plot the file
-
-        plot_prefix = args.plot_prefix
-        
+    #
     if(args.plot != None):
         FLAG_SHOW = False
         FLAG_SAVE = False
@@ -1117,7 +1116,6 @@ def main():
             else:
                 variables_plot.append(var)
 
-        print('Plot prefix:',args.plot_prefix)
         if(args.plot_prefix == None):
             plot_prefix = "./"
         else:
