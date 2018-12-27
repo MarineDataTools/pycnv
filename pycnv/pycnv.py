@@ -272,8 +272,9 @@ def parse_iow_header(header,pycnv_object=None):
     if pycnv_object is not None:
         pycnv_object.iow = iow_data
         try:
-            pycnv_object.lat = iow_data['lat']
-            pycnv_object.lon = iow_data['lon']
+            if not(numpy.isnan(iow_data['lat'])):
+                pycnv_object.lat = iow_data['lat']
+                pycnv_object.lon = iow_data['lon']
         except:
             pass
         
