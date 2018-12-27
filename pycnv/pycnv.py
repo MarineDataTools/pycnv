@@ -246,9 +246,15 @@ def parse_iow_header(header,pycnv_object=None):
                 longitude = ("%s %s" % (pos_str[2],pos_str[3]))
                 latitude += CHAR_NORTH
                 longitude += CHAR_WEST
+
+                lon_str_min = longitude.split()[1][:-1]
+                lat_str_min = latitude.split()[1][:-1]
+                # The old Reise has ',' as decimal seperator, replace it with '.'
+                lon_str_min = lon_str_min.replace(',','.')
+                lat_str_min = lon_str_min.replace(',','.')                
                 # Convert to floats
-                lon = SIGN_WEST * float(longitude.split()[0]) + float(longitude.split()[1][:-1])/60.
-                lat = SIGN_NORTH * float(latitude.split()[0]) + float(latitude.split()[1][:-1])/60.
+                lon = SIGN_WEST * float(longitude.split()[0]) + float(lon_str_min)/60.
+                lat = SIGN_NORTH * float(latitude.split()[0]) + float(lat_str_min)/60.
 
             except Exception as e:
                 logger.warning('Could not get a valid position, setting it to unknown:' + str(e))
