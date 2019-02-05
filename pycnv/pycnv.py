@@ -975,7 +975,7 @@ the spines of the additional axes such that all ticks are visible
         # additional data to be plotted
         # Each additional label/ticks needs additional dy
         dy        = 0.1
-        dy_fig    = 0.07
+        dy_fig    = 0.07 # The space needed for the new xlabels
         y_bottom  = []
         y_top     = []
         i_bottom  = -1
@@ -994,7 +994,8 @@ the spines of the additional axes such that all ticks are visible
 
         pos_new     = [.05,.05,.9,.9]
         y0_new      = (i_bottom+1) * dy_fig
-        height_new  = .99 - (i_top+1) * dy_fig - y0_new
+        top_space   = 0.95 # The remaining space is used for the title
+        height_new  = top_space - (i_top+1) * dy_fig - y0_new
         pos_new = [ax.get_position().x0,y0_new,ax.get_position().width,height_new]
         ax.set_position(pos_new)                
         # Create new axes
@@ -1059,7 +1060,18 @@ the spines of the additional axes such that all ticks are visible
             axtmp.tick_params(axis='x', colors=xcolors[i])
             #axtmp.xaxis.label.set_label(xnames[i])
             axtmp.set_xlabel(xnames[i] + ' [' + xunits[i] + ']')
-            
+        
+        # Plotting the title
+        
+        axtmp = data['axes'][0]
+        fs = axtmp.xaxis.get_major_ticks()[0].label.get_fontsize() # Get the fontsize of the ticks
+        title_str = ''
+        title_str += self.filename + '\n'
+        title_str += self.date.strftime('%Y-%m-%d %H:%M:%S') + '; ' 
+        title_str += "{:6.3f}".format(self.lat) + 'N; ' + "{:6.3f}".format(self.lon) + 'E'
+        axtmp.text(.5,top_space,title_str,ha='center',transform=fig.transFigure,fontsize=fs+2)
+        self._update_plot_style(data)
+
 
     def add_sensor(self,sensor, name, data = None, description=None, unit=None):
         """Adds data from an additional sensor to the object, this is
