@@ -17,8 +17,6 @@ version_file = pkg_resources.resource_filename('pycnv','VERSION')
 with open(version_file) as version_f:
    version = version_f.read().strip()
 
-# TODO: add NMEA position, time
-
 # Setup logging module
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 logger = logging.getLogger('pycnv')
@@ -251,7 +249,7 @@ def parse_iow_header(header,pycnv_object=None):
                 lat_str_min = latitude.split()[1][:-1]
                 # The old Reise has ',' as decimal seperator, replace it with '.'
                 lon_str_min = lon_str_min.replace(',','.')
-                lat_str_min = lon_str_min.replace(',','.')                
+                lat_str_min = lat_str_min.replace(',','.')                
                 # Convert to floats
                 lon = SIGN_WEST * float(longitude.split()[0]) + float(lon_str_min)/60.
                 lat = SIGN_NORTH * float(latitude.split()[0]) + float(lat_str_min)/60.
@@ -1062,16 +1060,51 @@ the spines of the additional axes such that all ticks are visible
             #axtmp.xaxis.label.set_label(xnames[i])
             axtmp.set_xlabel(xnames[i] + ' [' + xunits[i] + ']')
             
-        self._update_plot_style(data)
 
+    def add_sensor(self,sensor, name, data = None, description=None, unit=None):
+        """Adds data from an additional sensor to the object, this is
+        e.g. used for external sensor attached to the CTD frame but
+        eventually merged with the internal CTD data.
 
-    def _update_plot_style(self,data):
-        """Updates the color and line styles of the data given in the passed
-        dictionary.
+        Args:
+            sensor:
+            name:
+            description:
+            data:
+            unit:
 
         """
-        pass
-        
+        # Check if we have an external sensor field
+        try:
+            self.external_sensors
+        except Exception as e:
+            self.external_sensors = {}
+
+        # Check if we have already the sensorname, if so, leave it but
+        # add the sensordata if availabe
+        try:
+            self.external_sensors[sensor]
+        except Exception as e:
+            self.external_sensors[sensor] = {'data':{},'names':{},'units':{}}
+
+        if(data is not None):
+            self.external_sensors[sensor]['data'][name] = data
+
+        if(description is not None):
+            self.external_sensors[sensor]['names'][name] = description
+        else:
+            self.external_sensors[sensor]['names'][name] = name            
+
+        if(unit is not None):
+            self.external_sensors[sensor]['units'][name] = unit
+        else:
+            self.external_sensors[sensor]['units'][name] = 'unknown'
+
+
+    def write_nc(self,filename):
+        """ Writes a netCDF4 file of the current pycnv object
+        """
+        print(filename)
 
         
     def __str__(self):
