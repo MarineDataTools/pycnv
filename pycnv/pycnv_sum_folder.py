@@ -352,8 +352,10 @@ def main():
     else:
         print('No files found ... ')
 
-
-    logger.info('Read ' +str(len(file_names_save)) + ' files (' + str(num_d.max()) + ' with unique datasets)')
+    nunique = 0
+    if(len(num_d) > 0):
+        nunique = num_d.max()
+    logger.info('Read ' +str(len(file_names_save)) + ' files (' + str(nunique) + ' with unique datasets)')
     if(filename != None):
         logger.info('Wrote ' +str(num_wr) + ' datasets into file:' + filename)
         fi.close()

@@ -251,7 +251,7 @@ def parse_iow_header(header,pycnv_object=None):
                 lat_str_min = latitude.split()[1][:-1]
                 # The old Reise has ',' as decimal seperator, replace it with '.'
                 lon_str_min = lon_str_min.replace(',','.')
-                lat_str_min = lon_str_min.replace(',','.')                
+                lat_str_min = lat_str_min.replace(',','.')                
                 # Convert to floats
                 lon = SIGN_WEST * float(longitude.split()[0]) + float(lon_str_min)/60.
                 lat = SIGN_NORTH * float(latitude.split()[0]) + float(lat_str_min)/60.
