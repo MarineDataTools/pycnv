@@ -553,9 +553,10 @@ class pycnv(object):
                 datum = line[1]
                 try:
                     self.upload_date = datetime.datetime.strptime(datum,'%b %d %Y %H:%M:%S')
+                    print(self.upload_date)
                     self.upload_date = self.upload_date.replace(tzinfo=timezone('UTC'))
                 except Exception as e:
-                    logger.warning('Could not decode time: ( ' + datum + ' )' + str(e))
+                    logger.warning('_parse_header() upload time: Could not decode time: ( ' + datum + ' ) ' + str(e))
 
             if("* NMEA Latitude" in l) or ("* NMEA Longitude" in l):
                 pos_str = l.rsplit('=')[1]
@@ -605,7 +606,7 @@ class pycnv(object):
                     self.date = datetime.datetime.strptime(datum,'%b %d %Y %H:%M:%S')
                     self.date = self.date.replace(tzinfo=timezone('UTC'))
                 except Exception as e:
-                    logger.warning('Could not decode time: ( ' + datum + ' )' + str(e))                    
+                    logger.warning('parse_header() NMEA: Could not decode time: ( ' + datum + ' )' + str(e))                    
 
             # Look for sensor names and units of type:
             # # name 4 = t090C: Temperature [ITS-90, deg C]

@@ -1,3 +1,5 @@
+0.3.8:
+        - added first draft of gui
 0.3.7:
         - first version with a rudimentary plot routine
 	- changed data from recarray to dictionary

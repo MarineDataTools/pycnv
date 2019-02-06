@@ -39,11 +39,12 @@ def get_stations():
     stations_yaml = yaml.safe_load(f_stations)
     return stations_yaml['stations']
     
-def get_all_valid_files(DATA_FOLDER, loglevel = logging.INFO, station = None, save_summary = False):
+def get_all_valid_files(DATA_FOLDER, loglevel = logging.INFO, station = None, save_summary = False, status_function = None):
     """
     Args:
        DATA_FOLDER: Either list of data_folder or string of one data_folder
        station: CTD cast has to lie within radius around position, given as a list with longitude [decdeg], latitude [decdeg], radius [m], e.g. [20.0,54.0,5000]
+       status_function: A function that is called during reading, the function is called with the current filenumber i, the total number of files nf and the filename f, e.g. function(i,nf,f) 
     Returns:
         Dictionary with data
     """
@@ -97,6 +98,9 @@ def get_all_valid_files(DATA_FOLDER, loglevel = logging.INFO, station = None, sa
         nf = len(matches)
         for i,f in enumerate(matches):
             logger.info('Parsing file ' + str(i) +'/' + str(nf) + ': ' + str(f))
+            if(status_function is not None):
+                print('Status function')
+                status_function(i,nf,f)
             cnv = pycnv(f,verbosity=loglevel)
             if(cnv.valid_cnv):
                 files_date.append(cnv.date)

@@ -14,7 +14,7 @@ setup(name='pycnv',
       license='GPLv03',
       packages=['pycnv'],
       scripts = [],
-      entry_points={ 'console_scripts': ['pycnv=pycnv.pycnv:main', 'pycnv_sum_folder=pycnv.pycnv_sum_folder:main']},
+      entry_points={ 'console_scripts': ['pycnv_cmd=pycnv.pycnv:main', 'pycnv_sum_folder=pycnv.pycnv_sum_folder:main', 'pycnv=pycnv.gui.pycnv_gui:main']},
       package_data = {'':['VERSION','stations/iow_stations.yaml','rules/standard_names.yaml']},
       install_requires=[ 'gsw', 'pyproj','pytz','pyaml' ],
       zip_safe=False)
