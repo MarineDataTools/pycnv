@@ -57,10 +57,13 @@ class casttableWidget(QtWidgets.QTableWidget):
         plotAction = QtWidgets.QAction('Add to map', self)
         plotAction.triggered.connect(self.plot_map)
         remplotAction = QtWidgets.QAction('Rem from map', self)
-        remplotAction.triggered.connect(self.rem_from_map)        
+        remplotAction.triggered.connect(self.rem_from_map)
+        plotcastAction = QtWidgets.QAction('Plot cast', self)
+        plotcastAction.triggered.connect(self.plot_cast)                
         print(QtGui.QCursor.pos())
         self.menu.addAction(plotAction)
-        self.menu.addAction(remplotAction)        
+        self.menu.addAction(remplotAction)
+        self.menu.addAction(plotcastAction)        
         self.menu.popup(QtGui.QCursor.pos())
         self.menu.show()
         # Get selected rows (as information for plotting etc.)
@@ -78,7 +81,11 @@ class casttableWidget(QtWidgets.QTableWidget):
 
     def rem_from_map(self):
         row_list = self.rows
-        self.plot_signal.emit(row_list,'rem from map') # Emit the signal with the row list and the command        
+        self.plot_signal.emit(row_list,'rem from map') # Emit the signal with the row list and the command
+
+    def plot_cast(self):
+        self.plot_signal.emit(self.currentRow(),'plot cast') # Emit the signal with the row list and the command
+
 
 
         
@@ -113,6 +120,8 @@ class mainWidget(QtWidgets.QWidget):
         self.layout.addWidget(self.search_opts_button,1,1)
         self.layout.addWidget(self.file_table,2,0,1,2)
         self.layout.addWidget(self.clear_table_button,3,0)
+        
+        self.dpi       = 100
 
     def plot_map(self):
         print('Plot map')
@@ -127,7 +136,7 @@ class mainWidget(QtWidgets.QWidget):
         FIG_LAT = [-89,90]
         #FIG_LON = [0,180]
         #FIG_LAT = [0,70]
-        self.dpi       = 100
+
         #self.fig       = Figure((5.0, 4.0), dpi=self.dpi)
         self.fig       = Figure(dpi=self.dpi)
         self.figwidget = QtWidgets.QWidget()
@@ -154,7 +163,33 @@ class mainWidget(QtWidgets.QWidget):
         if(command == 'add to map'):
             self.add_positions_to_map(rows)
         elif(command == 'rem from map'):
-            self.rem_positions_from_map(rows)            
+            self.rem_positions_from_map(rows)
+        elif(command == 'plot cast'):
+            self.plot_cast(rows)
+
+    def plot_cast(self,row):
+        """ Plots a single CTD cast
+        """
+        print('Plot cast row',row)
+        filename = self.data['files'][row]
+        cnv = pycnv(filename)
+        self.cast_fig       = Figure(dpi=self.dpi)
+        self.cast_figwidget = QtWidgets.QWidget()
+        self.cast_figwidget.setWindowTitle('pycnv cast')
+        self.cast_canvas    = FigureCanvas(self.cast_fig)
+        self.cast_canvas.setParent(self.cast_figwidget)
+        plotLayout = QtWidgets.QVBoxLayout()
+        plotLayout.addWidget(self.cast_canvas)
+        self.cast_figwidget.setLayout(plotLayout)
+        self.cast_canvas.setMinimumSize(self.cast_canvas.size()) # Prevent to make it smaller than the original size
+        self.cast_mpl_toolbar = NavigationToolbar(self.cast_canvas, self.cast_figwidget)
+        plotLayout.addWidget(self.cast_mpl_toolbar)
+        
+        cnv.plot(figure=self.cast_fig)
+        self.cast_canvas.draw()        
+        #for ax in cnv.axes[0]['axes']:
+        #    ax.draw()
+        self.cast_figwidget.show()
 
     def add_positions_to_map(self,rows):
         # Check if we have a map, if not call plot_map to create one

@@ -8,6 +8,9 @@ import pkg_resources
 import yaml
 import pylab as pl
 import os
+import hashlib
+
+
 
 standard_name_file = pkg_resources.resource_filename('pycnv', 'rules/standard_names.yaml')
 
@@ -266,7 +269,7 @@ def parse_iow_header(header,pycnv_object=None):
             iow_data['lat'] = lat
             iow_data['lon'] = lon
 
-
+    # Add the data to the calling object (pycnv object)
     if pycnv_object is not None:
         pycnv_object.iow = iow_data
         try:
@@ -308,7 +311,7 @@ class pycnv(object):
        header_parse: Function for parsing custom header information, will be called like so: header_parse(header_str, self), where self is the pycnv object. The function can thus create fields of the pycnv object. See parse_iow_header() as an example
     
     """
-    def __init__(self,filename, only_metadata = False,verbosity = logging.INFO, naming_rules = standard_name_file,encoding='latin-1',baltic=None, header_parse = parse_iow_header  ):
+    def __init__(self,filename, only_metadata = False,verbosity = logging.INFO, naming_rules = standard_name_file,encoding='latin-1',baltic=None, header_parse = parse_iow_header,calc_sha1=True  ):
         """
         """
         logger.setLevel(verbosity)
@@ -317,20 +320,53 @@ class pycnv(object):
         self.filename = filename
         self.file_type = ''
         self.channels = []
-        self.data = None
-        self.date = None        
+        self.data        = None
+        self.date        = None
+        self.upload_date = None
+        self.start_date  = None
+        self.nmea_date   = None        
         self.lon = numpy.NaN
         self.lat = numpy.NaN
 
         # Plotting variables
         self.figures = []
         self.axes    = []        
-        # Opening file for read
-        raw = open(self.filename, "r",encoding=encoding)
+        # Opening file for reading
+        try:
+            # Calculate a md5 hash
+            if(calc_sha1):
+               BLOCKSIZE = 65536
+               hasher = hashlib.sha1()
+               with open(self.filename, 'rb') as afile:
+                   buf = afile.read(BLOCKSIZE)
+                   while len(buf) > 0:
+                      hasher.update(buf)
+                      buf = afile.read(BLOCKSIZE)
+
+               self.sha1 = hasher.hexdigest()
+               afile.close()               
+            else:
+               self.sha1 = None
+               
+            # Opening for reading
+            raw = open(self.filename, "r",encoding=encoding)
+        except:
+            logger.critical('Could not open file:' + self.filename)
+            self.valid_cnv = False
+            return
         #print('Hallo!',raw)
         # Find the header and store it
         header = self._get_header(raw)
         self._parse_header()
+        # Decide which timestamp to use for the date
+        #NMEA UTC (Time)
+        if(self.nmea_date is not None):
+            self.date = self.nmea_date
+        elif(self.upload_date is not None):
+            self.date = self.upload_date
+        elif(self.start_date is not None):
+            self.date = self.start_date            
+            
         # Check if we found channels
         # If yes we have a valid cnv file
         if(len(self.channels) == 0):
@@ -553,7 +589,6 @@ class pycnv(object):
                 datum = line[1]
                 try:
                     self.upload_date = datetime.datetime.strptime(datum,'%b %d %Y %H:%M:%S')
-                    print(self.upload_date)
                     self.upload_date = self.upload_date.replace(tzinfo=timezone('UTC'))
                 except Exception as e:
                     logger.warning('_parse_header() upload time: Could not decode time: ( ' + datum + ' ) ' + str(e))
@@ -593,9 +628,19 @@ class pycnv(object):
                 #print(pos_str,pos_str_deg,pos_str_min,self.lat)
                 #input('fds')
 
+            if "* NMEA UTC (Time) = " in l:
+                # Like this:
+                #* NMEA UTC (Time) = Feb 21 2019 10:18:21
+                line     = l.split(" = ")
+                line1     = line[1].split(" [")                
+                datum = line1[0]
+                try:
+                    self.nmea_date = datetime.datetime.strptime(datum,'%b %d %Y %H:%M:%S')
+                    self.nmea_date = self.nmea_date.replace(tzinfo=timezone('UTC'))
+                except Exception as e:
+                    logger.warning('parse_header() nmea_time: Could not decode time: ( ' + datum + ' )' + str(e))
 
-
-            
+                    
             if "# start_time = " in l:
                 # Like this:
                 # start_time = May 03 2018 13:02:01 [Instrument's time stamp, header]
@@ -603,10 +648,10 @@ class pycnv(object):
                 line1     = line[1].split(" [")                
                 datum = line1[0]
                 try:
-                    self.date = datetime.datetime.strptime(datum,'%b %d %Y %H:%M:%S')
-                    self.date = self.date.replace(tzinfo=timezone('UTC'))
+                    self.start_date = datetime.datetime.strptime(datum,'%b %d %Y %H:%M:%S')
+                    self.start_date = self.start_date.replace(tzinfo=timezone('UTC'))
                 except Exception as e:
-                    logger.warning('parse_header() NMEA: Could not decode time: ( ' + datum + ' )' + str(e))                    
+                    logger.warning('parse_header() start_time: Could not decode time: ( ' + datum + ' )' + str(e))                    
 
             # Look for sensor names and units of type:
             # # name 4 = t090C: Temperature [ITS-90, deg C]
@@ -697,6 +742,23 @@ class pycnv(object):
 
             
         self.raw_data = numpy.asarray(data)
+
+        
+    def get_info_dict(self):
+        """ Returns a dictionary with the essential information
+        """
+        info_dict = {}
+        info_dict['lon']  = self.lon
+        info_dict['lat']  = self.lat
+        info_dict['date'] = self.date
+        try:
+            info_dict['station'] = self.iow['station']
+        except:
+            info_dict['station'] = ''
+        info_dict['file'] = self.filename
+        info_dict['sha1'] = self.sha1
+        info_dict['type'] = 'CNV'        
+        return info_dict
 
     def get_summary(self,header=False):
         """
@@ -791,7 +853,7 @@ class pycnv(object):
     #
     def plot(self,xaxis=['CT00','SA00','oxy0','pot_rho00'],xlims=None,colors=None,
          yaxis='p',ylim=None,show=False,save=False,figsize=[8.27,11.69],fig_prefix
-         = './'):
+             = './',figure=None):
     #def plot(self,xaxis=['CT00','pot_rho00'],yaxis='p',show=True,save=True):
         """ Plots the data in the cnv file using matplotlib
         Arguments:
@@ -804,6 +866,7 @@ class pycnv(object):
            save:
            figsize: The size of the figure plotted
            fig_prefix: The prefix put before the figname (this can be a folder together with a file prefix)
+           figure: Matplotlib figure for plotting, if None pl.figure() is called
 
         """
         # Looking for data for y-axis
@@ -831,7 +894,7 @@ class pycnv(object):
         x_lims     = []        
         for dat_plot in xaxis:
             if dat_plot in self.data:
-                print('Found data to plot in data:' + dat_plot)                
+                #print('Found data to plot in data:' + dat_plot)                
                 x_data.append(self.data[dat_plot])
                 if dat_plot in self.names:
                     x_names.append(self.names[dat_plot])
@@ -881,10 +944,15 @@ class pycnv(object):
             logger.warning('plot():Did not find valid x-data:')
             return
 
-        fig = pl.figure()
+        # Check if we got a figure a function argument
+        if figure == None:
+            fig = pl.figure()
+        else:
+            fig = figure
         # Set the size to din A4
         fig.set_size_inches(figsize)
-        ax = pl.subplot(1,1,1)
+        #ax = pl.subplot(1,1,1)
+        ax = fig.add_subplot(1,1,1)
         self.figures.append(fig)
         ax_dict = {'figure':fig,'axes':[ax],'x_data':x_data,'x_names':x_names,'x_units':x_units,'y_data':y_data,'y_names':y_names,'y_units':y_units,'x_colors':x_colors,'x_lims':x_lims,'y_lim':ylim}
 
@@ -933,7 +1001,7 @@ class pycnv(object):
                 for d in data_types[data_type]:
                     if d in name:
                         #logger.debug('_get_color(): found data type' + data_type)
-                        print('_get_color(): found data type: ' + d)
+                        #print('_get_color(): found data type: ' + d)
                         if(len(data_colors[data_type])>0):
                             col = data_colors[data_type].pop()
                         else:
@@ -981,7 +1049,7 @@ the spines of the additional axes such that all ticks are visible
         y_top     = []
         i_bottom  = -1
         i_top     = -1
-        print('posy',posy)
+        #print('posy',posy)
         for i in range(0,naxes):
             if(i%2 == 0):
                 i_bottom += 1
@@ -1001,11 +1069,12 @@ the spines of the additional axes such that all ticks are visible
         ax.set_position(pos_new)                
         # Create new axes
         for i in range(0,naxes):
-            print('Creating new axes')
+            #print('Creating new axes')
             if(i>0):
                 # This is a nasty hack, otherwise a same position will result in the same axes
                 pos_new[0] += 1e-12
-                data['axes'].append(pl.axes(pos_new))
+                #data['axes'].append(pl.axes(pos_new))
+                data['axes'].append(fig.add_axes(pos_new))
                 
             axtmp = data['axes'][-1]
             if(i == 0): # Dont do anything on the original axis
@@ -1019,7 +1088,7 @@ the spines of the additional axes such that all ticks are visible
                     sp.set_visible(False)
 
             if(i%2 == 0):
-                print('y_bottom',y_bottom[i])
+                #print('y_bottom',y_bottom[i])
                 axtmp.spines["bottom"].set_position(("axes", y_bottom[i]))
                 if(naxes > 1): # Only remove the top spines if we have more than one axes
                     axtmp.spines["top"].set_visible(False)
@@ -1028,7 +1097,7 @@ the spines of the additional axes such that all ticks are visible
                 axtmp.xaxis.set_ticks_position("bottom")
                 axtmp.xaxis.set_label_position('bottom') 
             else:
-                print('y_top',y_top[i])
+                #print('y_top',y_top[i])
                 axtmp.spines["top"].set_position(("axes", y_top[i]))
                 axtmp.spines["top"].set_visible(True)
                 axtmp.spines["top"].set_color(xcolors[i])
@@ -1053,10 +1122,11 @@ the spines of the additional axes such that all ticks are visible
             pltmp = axtmp.plot(xdata[i][ind],ydata[ind],color=xcolors[i])
 
             if xlims[i] is not None:
-                print('ranges!')
+                #print('ranges!')
                 axtmp.set_xlim(xlims[i])
             else:
-                print('no ranges!')
+                pass
+                #print('no ranges!')
             axtmp.xaxis.label.set_color(xcolors[i])
             axtmp.tick_params(axis='x', colors=xcolors[i])
             #axtmp.xaxis.label.set_label(xnames[i])
@@ -1071,7 +1141,7 @@ the spines of the additional axes such that all ticks are visible
         title_str += self.date.strftime('%Y-%m-%d %H:%M:%S') + '; ' 
         title_str += "{:6.3f}".format(self.lat) + 'N; ' + "{:6.3f}".format(self.lon) + 'E'
         axtmp.text(.5,top_space,title_str,ha='center',transform=fig.transFigure,fontsize=fs+2)
-        self._update_plot_style(data)
+        #self._update_plot_style(data)
 
 
     def add_sensor(self,sensor, name, data = None, description=None, unit=None):
@@ -1117,7 +1187,7 @@ the spines of the additional axes such that all ticks are visible
     def write_nc(self,filename):
         """ Writes a netCDF4 file of the current pycnv object
         """
-        print(filename)
+        print('write_nc() not implemented yet! Sorry for that ...',filename)
 
         
     def __str__(self):

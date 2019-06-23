@@ -81,7 +81,7 @@ def get_all_valid_files(DATA_FOLDER, loglevel = logging.INFO, station = None, sa
 
     logger.info('Found ' + str(len(matches)) + ' cnv files in folder(s):' + str(DATA_FOLDER))
     if(len(matches) == 0):
-        return {'files':[],'dates':[],'lon':[],'lat':[]}
+        return {'files':[],'dates':[],'lon':[],'lat':[],'info_dict':[]}
     save_file       = []
     files_date      = []
     file_names_save = []
@@ -89,6 +89,7 @@ def get_all_valid_files(DATA_FOLDER, loglevel = logging.INFO, station = None, sa
     files_lat_save  = []        
     files_date_save = []
     files_summary   = []
+    files_info_dict = []    
     if(len(matches) > 0):
         # Write the header of the file
         print('Hallo',matches[0])
@@ -108,7 +109,7 @@ def get_all_valid_files(DATA_FOLDER, loglevel = logging.INFO, station = None, sa
                 FLAG_GOOD = False
                 # Check if we are within a distance
                 lon = cnv.lon
-                lat = cnv.lat                
+                lat = cnv.lat
                 if(FLAG_DIST):
                     if(not(numpy.isnan(lon)) and not(numpy.isnan(lat))):
                         az12,az21,dist = g.inv(lon,lat,londist,latdist)
@@ -125,6 +126,7 @@ def get_all_valid_files(DATA_FOLDER, loglevel = logging.INFO, station = None, sa
                     files_lon_save.append(lon)
                     files_lat_save.append(lat)
                     files_summary.append(summary)
+                    files_info_dict.append(cnv.get_info_dict()) # This will be the standard for future development
                 else:
                     save_file.append(False)
 
@@ -137,7 +139,7 @@ def get_all_valid_files(DATA_FOLDER, loglevel = logging.INFO, station = None, sa
 
         ind_sort = numpy.argsort(files_date_save)                
         file_names_save_sort = list(numpy.asarray(file_names_save)[ind_sort])
-        retdata  = {'files':file_names_save_sort,'dates':list(numpy.asarray(files_date_save)[ind_sort]),'lon':list(numpy.asarray(files_lon_save)[ind_sort]),'lat':list(numpy.asarray(files_lat_save)[ind_sort])}
+        retdata  = {'files':file_names_save_sort,'dates':list(numpy.asarray(files_date_save)[ind_sort]),'lon':list(numpy.asarray(files_lon_save)[ind_sort]),'lat':list(numpy.asarray(files_lat_save)[ind_sort]),'info_dict':list(numpy.asarray(files_info_dict)[ind_sort])}
 
         if save_summary:
             summary_array = numpy.asarray(files_summary)[ind_sort]
