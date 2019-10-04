@@ -362,10 +362,11 @@ class pycnv(object):
         #NMEA UTC (Time)
         if(self.nmea_date is not None):
             self.date = self.nmea_date
+        elif(self.start_date is not None):
+            self.date = self.start_date                        
         elif(self.upload_date is not None):
             self.date = self.upload_date
-        elif(self.start_date is not None):
-            self.date = self.start_date            
+
             
         # Check if we found channels
         # If yes we have a valid cnv file
