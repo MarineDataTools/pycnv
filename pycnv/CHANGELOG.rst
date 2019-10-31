@@ -1,3 +1,5 @@
+0.3.9:
+        - changed minor things for compatibility with pip
 0.3.8:
         - added first draft of gui
 0.3.7:

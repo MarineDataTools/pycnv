@@ -40,7 +40,7 @@ Uninstall as a user
    
 .. code:: bash
 	  
-pip uninstall pycnv
+   pip uninstall pycnv
 
 
 
