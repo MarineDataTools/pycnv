@@ -39,12 +39,14 @@ def get_stations():
     stations_yaml = yaml.safe_load(f_stations)
     return stations_yaml['stations']
     
-def get_all_valid_files(DATA_FOLDER, loglevel = logging.INFO, station = None, save_summary = False, status_function = None):
+def get_all_valid_files(DATA_FOLDER, loglevel = logging.INFO, station = None, save_summary = False, status_function = None, start_time = None, stop_time = None):
     """
     Args:
        DATA_FOLDER: Either list of data_folder or string of one data_folder
-       station: CTD cast has to lie within radius around position, given as a list with longitude [decdeg], latitude [decdeg], radius [m], e.g. [20.0,54.0,5000]
+       station: CTD cast has to lie within radius around position, given as a list with longitude [decdeg], latitude [decdeg], radius [m], e.g. [20.0,54.0,5000], if station has 4 arguments it is treated as a rectangle with [lon0,lat0,lon1,lat1] and the cast has to be within lon0 and lon1 as well as lat0 and lat1
        status_function: A function that is called during reading, the function is called with the current filenumber i, the total number of files nf and the filename f, e.g. function(i,nf,f) 
+       start_time: Casts date need to be after start time [datetime]
+       stop_time: Casts date need to be before stop time [datetime]
     Returns:
         Dictionary with data
     """
@@ -54,11 +56,33 @@ def get_all_valid_files(DATA_FOLDER, loglevel = logging.INFO, station = None, sa
     if station == None:
         FLAG_DIST = False
     else:
-        londist   = station[0]
-        latdist   = station[1]
-        distdist  = station[2]
-        FLAG_DIST = True
+        if(len(station) == 3): # Sphere with radius
+            londist   = station[0]
+            latdist   = station[1]
+            distdist  = station[2]
+            FLAG_DIST = True            
+        elif(len(station) == 4): # Rectangle
+            londist   = station[0]
+            latdist   = station[1]
+            londist2   = station[2]
+            latdist2   = station[3]            
+            distdist  = -9999
+            FLAG_DIST = True
+        else:
+            logger.info('Defined position threshold with wrong parameters')
+            FLAG_DIST = False            
 
+
+    if (type(start_time) == datetime.datetime) or (type(stop_time) == datetime.datetime):
+        FLAG_TIME = True
+        # Check if one of the two is not a datetime
+        if(type(start_time) is not datetime.datetime):
+            start_time = datetime.datetime(1,1,1, tzinfo=timezone('UTC'))
+        if(type(stop_time) is not datetime.datetime):
+            stop_time = datetime.datetime(3000,1,1, tzinfo=timezone('UTC'))            
+    else:
+        FLAG_TIME = False        
+        
     #
     # Loop through all subfolders
     #
@@ -81,6 +105,9 @@ def get_all_valid_files(DATA_FOLDER, loglevel = logging.INFO, station = None, sa
 
     logger.info('Found ' + str(len(matches)) + ' cnv files in folder(s):' + str(DATA_FOLDER))
     if(len(matches) == 0):
+        if(status_function is not None):
+            print('Status function nothing found')
+            status_function(0,0,'Nothing found')        
         return {'files':[],'dates':[],'lon':[],'lat':[],'info_dict':[]}
     save_file       = []
     files_date      = []
@@ -92,7 +119,7 @@ def get_all_valid_files(DATA_FOLDER, loglevel = logging.INFO, station = None, sa
     files_info_dict = []    
     if(len(matches) > 0):
         # Write the header of the file
-        print('Hallo',matches[0])
+        #print('Hallo',matches[0])
         cnv = pycnv(matches[0],verbosity=logging.CRITICAL)
 
         # Loop through all files and make summary
@@ -100,26 +127,42 @@ def get_all_valid_files(DATA_FOLDER, loglevel = logging.INFO, station = None, sa
         for i,f in enumerate(matches):
             logger.info('Parsing file ' + str(i) +'/' + str(nf) + ': ' + str(f))
             if(status_function is not None):
-                print('Status function')
+                #print('Status function')
                 status_function(i,nf,f)
             cnv = pycnv(f,verbosity=loglevel)
             if(cnv.valid_cnv):
                 files_date.append(cnv.date)
                 summary = cnv.get_summary()
-                FLAG_GOOD = False
+                FLAG_GOOD_DIST = False
+                FLAG_GOOD_TIME = False
                 # Check if we are within a distance
                 lon = cnv.lon
                 lat = cnv.lat
+                if(FLAG_TIME):
+                    if((cnv.date > start_time) and (cnv.date < stop_time)):
+                        FLAG_GOOD_TIME = True
+                else:
+                    FLAG_GOOD_TIME = True
+                    
                 if(FLAG_DIST):
                     if(not(numpy.isnan(lon)) and not(numpy.isnan(lat))):
-                        az12,az21,dist = g.inv(lon,lat,londist,latdist)
-                        if(dist < distdist):
-                            FLAG_GOOD = True
+                        print('Distance')
+                        if(distdist > 0): # Radius defined
+                            print('Radius')                            
+                            az12,az21,dist = g.inv(lon,lat,londist,latdist)
+                            if(dist < distdist):
+                                print('Radius good')
+                                FLAG_GOOD_DIST = True
+                        else: # Rectangle defined
+                            print('Rectangle')
+                            if((lon >= londist) and (lon <= londist2) and (lat >= latdist) and (lat <= latdist2)):
+                                print('Rectangle good')
+                                FLAG_GOOD_DIST = True
 
                 else:
-                    FLAG_GOOD = True
+                    FLAG_GOOD_DIST = True
 
-                if(FLAG_GOOD):
+                if(FLAG_GOOD_DIST and FLAG_GOOD_TIME):
                     save_file.append(True)
                     file_names_save.append(f)
                     files_date_save.append(cnv.date)

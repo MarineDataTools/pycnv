@@ -1,3 +1,5 @@
+0.4.0:
+        - added time thresholds in pycnv_sum_folder and positional search with a rectangle defined
 0.3.9:
         - changed minor things for compatibility with pip
 0.3.8:
