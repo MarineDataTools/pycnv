@@ -475,7 +475,49 @@ class pycnv(object):
                     self.cnames.update(compdata[2])
                 else:
                     logger.debug('Not computing data using the gsw toolbox, as we dont have the three standard parameters (C1,T1,p)')
+                # Add standard names directly to object
+                try:                
+                    self.p = self.data['p']
+                    self.p_unit = self.units_std['p']
+                except:
+                    pass
 
+                try:                                  
+                    self.C = self.data['C0']
+                    self.C_unit = self.units_std['C0']
+                except:
+                    pass
+
+                try:                                    
+                    self.T = self.data['T0']
+                    self.T_unit = self.units_std['T0']
+                except:
+                    pass
+
+                try:                                    
+                    self.SP = self.cdata['SP00']
+                    self.SP_unit = self.cunits['SP00']
+                except:
+                    pass
+
+                try:                                    
+                    self.SA = self.cdata['SA00']
+                    self.SA_unit = self.cunits['SA00']
+                except:
+                    pass
+
+                try:                                    
+                    self.CT = self.cdata['CT00']
+                    self.CT_unit = self.cunits['CT00']
+                except:
+                    pass                
+
+                try:                                    
+                    self.pot_rho = self.cdata['pot_rho00']
+                    self.pot_rho_unit = self.cunits['pot_rho00']
+                except:
+                    pass                                                
+                
                 # Add pressure for convenience to cdata
                 if self.cdata is not None:
                     self.cdata['p'] = self.data['p'][:]

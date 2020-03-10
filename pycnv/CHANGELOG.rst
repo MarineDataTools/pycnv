@@ -1,3 +1,5 @@
+0.4.1:
+        - added standard names as .p, .T, .C, .pot_rho, .SP, .SA, .CT for a more convenient plotting
 0.4.0:
         - added time thresholds in pycnv_sum_folder and positional search with a rectangle defined
 0.3.9:

@@ -148,11 +148,13 @@ def get_all_valid_files(DATA_FOLDER, loglevel = logging.INFO, station = None, sa
                     if(not(numpy.isnan(lon)) and not(numpy.isnan(lat))):
                         print('Distance')
                         if(distdist > 0): # Radius defined
-                            print('Radius')                            
                             az12,az21,dist = g.inv(lon,lat,londist,latdist)
+                            print('Radius, distance:' + str(dist) + ' m')
                             if(dist < distdist):
                                 print('Radius good')
                                 FLAG_GOOD_DIST = True
+                            else:
+                                print('Too far away')
                         else: # Rectangle defined
                             print('Rectangle')
                             if((lon >= londist) and (lon <= londist2) and (lat >= latdist) and (lat <= latdist2)):
