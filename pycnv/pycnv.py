@@ -510,7 +510,13 @@ class pycnv(object):
                     self.CT = self.cdata['CT00']
                     self.CT_unit = self.cunits['CT00']
                 except:
-                    pass                
+                    pass
+
+                try:                                    
+                    self.pt = self.cdata['pt00']
+                    self.pt_unit = self.cunits['pt00']
+                except:
+                    pass                                
 
                 try:                                    
                     self.pot_rho = self.cdata['pot_rho00']
@@ -524,9 +530,9 @@ class pycnv(object):
                     self.cunits['p'] = self.units_std['p']
                     self.cnames['p'] = self.names_std['p']
                     # Add oxygen in umol/l to cdata
-                    oxyfac = 1e3  / 22.391
+                    oxyfac    = 1e3  / 22.391
                     oxy_names = ['oxy0','oxy1']
-                    for oxy_name in oxy_names:
+                    for noxy,oxy_name in enumerate(oxy_names):
                         if(oxy_name in self.names_std.keys()):
                             logger.debug('Found ' + oxy_name + ' channel, checking  unit')
                             try:
@@ -538,6 +544,11 @@ class pycnv(object):
                                 self.cdata[oxy_name] = self.data[oxy_name][:]  * oxyfac 
                                 self.cunits[oxy_name] = 'umol/l'
                                 self.cnames[oxy_name] = self.names_std[oxy_name]
+                                if(noxy == 0):
+                                    self.oxy = self.cdata[oxy_name]
+                                    self.oxy_unit = self.cunits[oxy_name]
+                            else:
+                                logger.debug('Found ' + oxy_name + ' channel, with unknown unit:' + oxyunit)
                                 
                 
             else:

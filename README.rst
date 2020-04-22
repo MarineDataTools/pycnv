@@ -76,7 +76,23 @@ FEATURES
   Gibbs Sea water toolbox is used to calculate absolute salinity, SA,
   conservative temperature, CT, and potential temperature pt. The data
   is stored in a second field called computed data:
-  cdata. E.g. cdata['SA00'].
+  cdata. E.g. cdata['SA00']. The code used to compute the properties
+  are
+  .. code:: python
+	    
+            SP = gsw.SP_from_C(data['C' + isen], T, data['p'])
+            SA = gsw.SA_from_SP(SP,data['p'],lon = lon, lat = lat)
+            if(baltic == True):
+	        SA = gsw.SA_from_SP_Baltic(SA,lon = lon, lat = lat)
+            
+	    PT = gsw.pt0_from_t(SA, T, data['p'])
+            CT = gsw.CT_from_t(SA, T, data['p'])        
+            pot_rho = gsw.pot_rho_t_exact(SA, T, data['p'], p_ref)
+
+- The cnv object provides standard entries for pressure (cnv.p),
+  temperature (cnv.T), conservative temperature (cnv.CT), practical
+  salinity (cnv.SP), absolute salinity (cnv.SA), pot density
+  (cnv.pot_rho), oxygen (cnv.oxy).
 
 - The module checks if the cast was made in the Baltic Sea, if so, the
   modified Gibbs sea water functions are automatically used.
