@@ -123,13 +123,13 @@ The package installs the executables:
   
 EXAMPLES 
 --------
-Plot the in Situ temperature and the conservative temperature of a CTD cast:
+Plot the absolute salinity and oxygen of a CTD cast:
 
 .. code:: python
 	  
 	  import pycnv
 	  import pylab as pl 
-	  fname = 'test.cnv'
+	  fname = 'test.cnv' # Some CTD cast
 
 	  cnv = pycnv.pycnv(fname)
 	  print('Test if we are in the Baltic Sea (usage of different equation of state): ' + str(cnv.baltic))
