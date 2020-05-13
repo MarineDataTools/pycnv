@@ -30,7 +30,14 @@ therefore strongly recommended to use python 3.5+.
 User
 ____
 
-Install as a user
+
+Install as a user using pip
+
+.. code:: bash
+	  
+   pip install pycnv
+
+Install as a user from the repository
 
 .. code:: bash
 	  
