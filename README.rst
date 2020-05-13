@@ -204,7 +204,7 @@ see code pycnv/test/make_netcdf.py
 Devices tested 
 --------------
 
-- SEACAT V4.0g
+- SEACAT (SBE16) V4.0g
 
 - MICROCAT (SBE37)
 
