@@ -92,8 +92,9 @@ FEATURES
 
 - The cnv object provides standard entries for pressure (cnv.p),
   temperature (cnv.T), conservative temperature (cnv.CT), practical
-  salinity (cnv.SP), absolute salinity (cnv.SA), pot density
-  (cnv.pot_rho), oxygen (cnv.oxy).
+  salinity (cnv.SP), absolute salinity (cnv.SA), potential density
+  (cnv.pot_rho), oxygen (cnv.oxy). The units have the extension
+  _units, i.e. cnv.p_units
 
 - The module checks if the cast was made in the Baltic Sea, if so, the
   modified Gibbs sea water functions are automatically used.
@@ -127,19 +128,49 @@ Plot the in Situ temperature and the conservative temperature of a CTD cast:
 .. code:: python
 	  
 	  import pycnv
-	  import pylab as pl
-	  fname='test.cnv' # A sebaird cnv file
-	  p = pycnv.pycnv(fname)
+	  import pylab as pl 
+	  fname = 'test.cnv'
+
+	  cnv = pycnv.pycnv(fname)
+	  print('Test if we are in the Baltic Sea (usage of different equation of state): ' + str(cnv.baltic))
+	  print('Position of cast is: Longitude:', cnv.lon,'Latitude:',cnv.lat)
+	  print('Time of cast was:', cnv.date)
+	  print('Number of sensor entries (len(cnv.data.keys())):',len(cnv.data.keys()))
+	  print('Names of sensor entries (cnv.data.keys()):',cnv.data.keys())
+
+	  # Get data of entry
+	  key0 = list(cnv.data.keys())[0]
+	  data0 = cnv.data[key0]
+
+	  # Get derived data:
+	  keyd0 = list(cnv.cdata.keys())[0]
+	  datad0 = cnv.cdata[keyd0]
+	  # Get unit of derived data
+	  datad0_unit = cnv.cunits[keyd0]
+
+	  # Standard names are mapped to 
+	  # cnv.p,cnv.CT,cnv.T,cnv.SP,cnv.oxy
+	  # units are _unit, e.g. cnv.p_unit
+
+	  # Plot standard parameters
 	  pl.figure(1)
 	  pl.clf()
 	  pl.subplot(1,2,1)
-	  pl.plot(p.data['T'],p.data['p'])
-	  pl.xlabel(p.units['T'])
-	  pl.gca().invert_yaxis()	  
-	  pl.subplot(1,2,2)
-	  pl.plot(p.cdata['CT'],p.data['p'])
-	  pl.xlabel(p)
+	  pl.plot(cnv.SA,cnv.p)
+	  pl.xlabel('Absolute salinity [' + cnv.SA_unit + ']')
+	  pl.ylabel('Pressure [' + cnv.p_unit + ']')
 	  pl.gca().invert_yaxis()
+
+	  pl.subplot(1,2,2)
+	  pl.plot(cnv.oxy,cnv.p)
+	  pl.plot(cnv.cdata['oxy0'],cnv.p)
+	  pl.plot(cnv.cdata['oxy1'],cnv.p)
+	  pl.xlabel('Oxygen [' + cnv.oxy_unit + ']')
+	  pl.ylabel('Pressure [' + cnv.p_unit + ']')
+	  pl.gca().invert_yaxis()
+
+	  pl.show()
+
 
 	  
 Lists all predefined stations (in terminal):
@@ -174,6 +205,8 @@ Devices tested
 --------------
 
 - SEACAT V4.0g
+
+- MICROCAT (SBE37)
 
 - SBE 11plus V 5.1e
 
