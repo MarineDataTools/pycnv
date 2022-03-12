@@ -9,7 +9,7 @@ import yaml
 import pylab as pl
 import os
 import hashlib
-
+import errno
 
 
 standard_name_file = pkg_resources.resource_filename('pycnv', 'rules/standard_names.yaml')
@@ -350,10 +350,12 @@ class pycnv(object):
                
             # Opening for reading
             raw = open(self.filename, "r",encoding=encoding)
-        except:
-            logger.critical('Could not open file:' + self.filename)
+        except Exception as e:
+            logger.critical('Could not open file:' + self.filename + ' (Exception: {:s})'.format(str(e)))
             self.valid_cnv = False
-            return
+            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), filename)
+            #return
+        
         #print('Hallo!',raw)
         # Find the header and store it
         header = self._get_header(raw)
@@ -436,7 +438,7 @@ class pycnv(object):
                     self.data['C0']
                     self.data['T0']
                     self.data['p']
-                    FLAG_COMPUTE0 = True
+                    FLAG_COMPUTE0 = True # If we have the basic parameter to derive salinity, denisty, N2 ...
                 except:
                     FLAG_COMPUTE0 = False
 
@@ -548,7 +550,7 @@ class pycnv(object):
                                     self.oxy = self.cdata[oxy_name]
                                     self.oxy_unit = self.cunits[oxy_name]
                             else:
-                                logger.debug('Found ' + oxy_name + ' channel, with unknown unit:' + oxyunit)
+                                logger.debug('Found ' + str(oxy_name) + ' channel, with unknown unit:' + str(oxyunit))
                                 
                 
             else:
@@ -589,9 +591,10 @@ class pycnv(object):
             SA = gsw.SA_from_SP_Baltic(SA,lon = lon, lat = lat)
             
         PT = gsw.pt0_from_t(SA, T, data['p'])
-        CT = gsw.CT_from_t(SA, T, data['p'])        
+        CT = gsw.CT_from_t(SA, T, data['p'])                
+        [N2,pN2] = gsw.Nsquared(SA, CT, data['p'])        
         pot_rho                = gsw.pot_rho_t_exact(SA, T, data['p'], p_ref)
-        names                  = ['SP' + sen,'SA' + sen,'pot_rho' + sen,'pt0' + sen,'CT' + sen]
+        names                  = ['SP' + sen,'SA' + sen,'pot_rho' + sen,'pt0' + sen,'CT' + sen,'N2' + sen,'pN2' + sen]
         formats                = ['float','float','float','float','float']        
         cdata                  = {}
         cdata['SP' + sen]      = SP
@@ -599,12 +602,17 @@ class pycnv(object):
         cdata['pot_rho' + sen] = pot_rho
         cdata['pt' + sen]      = PT
         cdata['CT' + sen]      = CT
+        cdata['N2' + sen]      = N2
+        cdata['pN2' + sen]      = pN2        
         cnames           = {'SA' + sen:'Absolute salinity','SP' + sen: 'Practical Salinity on the PSS-78 scale',
                             'pot_rho' + sen: 'Potential density',
                             'pt' + sen:'potential temperature with reference sea pressure (p_ref) = 0 dbar',
-                            'CT' + sen:'Conservative Temperature (ITS-90)'}
+                            'CT' + sen:'Conservative Temperature (ITS-90)',
+                            'N2' + sen:'Buoyancy frequency',
+                            'pN2' + sen:'pressure at the depth of the calculated buoyancy frequency'
+                            }
        
-        cunits = {'SA' + sen:'g/kg','SP' + sen:'PSU','pot_rho' + sen:'kg/m^3' ,'CT' + sen:'deg C','pt' + sen:'deg C'}
+        cunits = {'SA' + sen:'g/kg','SP' + sen:'PSU','pot_rho' + sen:'kg/m^3' ,'CT' + sen:'deg C','pt' + sen:'deg C','N2' + sen: '1/s^2','pN2' + sen: 'dbar'}
         
         return [cdata,cunits,cnames]
     
