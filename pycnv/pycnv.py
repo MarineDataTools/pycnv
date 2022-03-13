@@ -10,7 +10,7 @@ import pylab as pl
 import os
 import hashlib
 import errno
-
+import locale
 
 standard_name_file = pkg_resources.resource_filename('pycnv', 'rules/standard_names.yaml')
 
@@ -33,6 +33,45 @@ regions_baltic.append([[ 15.9,  24.6],[ 54.2,  60.2 ]])
 regions_baltic.append([[ 24.3,  30.4],[ 59.1,  60.8]])
 regions_baltic.append([[ 16.8,  23.3],[ 60.1,  63.3]])
 regions_baltic.append([[ 18.8,  25.6],[ 63.1,  66.2]])
+
+
+def parse_time(datum):
+    """
+    Parses a time string and tries different locales
+    Parameters
+    ----------
+    datum : str
+        A date as a string.
+
+    Returns
+    -------
+    start_date : datetime
+        The parsed date as a datetime object.
+
+    """
+    loc = locale.getlocale()
+    try:
+        start_date = datetime.datetime.strptime(datum,'%b %d %Y %H:%M:%S')
+        start_date = start_date.replace(tzinfo=timezone('UTC'))
+    except Exception as e:
+        start_date = None
+        logger.warning('parse_header() start_time: Could not decode time: ( ' + datum + ' )' + str(e) + ' locale' + str(loc))
+        
+    if(start_date == None): # Try english
+        
+        locale.setlocale(locale.LC_ALL, 'C')
+        locnew = locale.getlocale()
+        try:
+            start_date = datetime.datetime.strptime(datum,'%b %d %Y %H:%M:%S')
+            start_date = start_date.replace(tzinfo=timezone('UTC'))
+        except Exception as e:
+            start_date = None
+            logger.warning('parse_header() start_time: Could not decode time: ( ' + datum + ' )' + str(e) + ' locale' + str(locnew))
+        
+        # Restoring the original locale
+        locale.setlocale(locale.LC_ALL, loc)
+    return start_date                 
+
 
 def check_baltic(lon,lat):
     """
@@ -141,7 +180,7 @@ def parse_iow_header(header,pycnv_object=None):
                 try:
                     iow_data['date'] = datetime.datetime.strptime(datum_start + zeit_start,'%Y-%m-%d%H:%M:%S')
                     iow_data['date'] = iow_data['date'].replace(tzinfo=timezone('UTC'))
-                except:
+                except Exception as e:
                     logger.warning('Startzeit to datetime:' + str(e))
                     logger.warning('Startzeit str:' + line_orig)                    
                     iow_data['date'] = None
@@ -282,7 +321,7 @@ def parse_iow_header(header,pycnv_object=None):
         # If no date was found, try the IOW date
         if pycnv_object.date == None:
             try:
-                self.date = iow_data['date']
+                pycnv_object.date = iow_data['date']
             except:
                 pass         
 
@@ -649,11 +688,12 @@ class pycnv(object):
             if "* System UpLoad Time" in l:
                 line     = l.split(" = ")
                 datum = line[1]
-                try:
-                    self.upload_date = datetime.datetime.strptime(datum,'%b %d %Y %H:%M:%S')
-                    self.upload_date = self.upload_date.replace(tzinfo=timezone('UTC'))
-                except Exception as e:
-                    logger.warning('_parse_header() upload time: Could not decode time: ( ' + datum + ' ) ' + str(e))
+                self.upload_date = parse_time(datum)
+                #try:
+                #    self.upload_date = datetime.datetime.strptime(datum,'%b %d %Y %H:%M:%S')
+                #    self.upload_date = self.upload_date.replace(tzinfo=timezone('UTC'))
+                #except Exception as e:
+                #    logger.warning('_parse_header() upload time: Could not decode time: ( ' + datum + ' ) ' + str(e))
 
             if("* NMEA Latitude" in l) or ("* NMEA Longitude" in l):
                 pos_str = l.rsplit('=')[1]
@@ -696,11 +736,12 @@ class pycnv(object):
                 line     = l.split(" = ")
                 line1     = line[1].split(" [")                
                 datum = line1[0]
-                try:
-                    self.nmea_date = datetime.datetime.strptime(datum,'%b %d %Y %H:%M:%S')
-                    self.nmea_date = self.nmea_date.replace(tzinfo=timezone('UTC'))
-                except Exception as e:
-                    logger.warning('parse_header() nmea_time: Could not decode time: ( ' + datum + ' )' + str(e))
+                self.nmea_date = parse_time(datum)
+                #try:
+                #    self.nmea_date = datetime.datetime.strptime(datum,'%b %d %Y %H:%M:%S')
+                #    self.nmea_date = self.nmea_date.replace(tzinfo=timezone('UTC'))
+                #except Exception as e:
+                #    logger.warning('parse_header() nmea_time: Could not decode time: ( ' + datum + ' )' + str(e))
 
                     
             if "# start_time = " in l:
@@ -709,11 +750,12 @@ class pycnv(object):
                 line     = l.split(" = ")
                 line1     = line[1].split(" [")                
                 datum = line1[0]
-                try:
-                    self.start_date = datetime.datetime.strptime(datum,'%b %d %Y %H:%M:%S')
-                    self.start_date = self.start_date.replace(tzinfo=timezone('UTC'))
-                except Exception as e:
-                    logger.warning('parse_header() start_time: Could not decode time: ( ' + datum + ' )' + str(e))                    
+                self.start_date = parse_time(datum)
+                #try:
+                #    self.start_date = datetime.datetime.strptime(datum,'%b %d %Y %H:%M:%S')
+                #    self.start_date = self.start_date.replace(tzinfo=timezone('UTC'))
+                #except Exception as e:
+                #    logger.warning('parse_header() start_time: Could not decode time: ( ' + datum + ' )' + str(e))                    
 
             # Look for sensor names and units of type:
             # # name 4 = t090C: Temperature [ITS-90, deg C]

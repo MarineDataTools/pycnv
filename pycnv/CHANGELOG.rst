@@ -1,3 +1,4 @@
+0.4.2:  - improved datestring parsing using locales 
 0.4.1:
         - added standard names as .p, .T, .C, .pot_rho, .SP, .SA, .CT for a more convenient plotting
 0.4.0:
