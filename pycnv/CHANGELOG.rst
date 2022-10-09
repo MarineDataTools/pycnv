@@ -1,3 +1,5 @@
+0.4.4:  - simplified cdata, it is now from the initializtation onwards a dictionary and not None (might be emtpy though)
+0.4.3:  - computes the date of each measurement as a datetime object
 0.4.2:  - improved datestring parsing using locales 
 0.4.1:
         - added standard names as .p, .T, .C, .pot_rho, .SP, .SA, .CT for a more convenient plotting

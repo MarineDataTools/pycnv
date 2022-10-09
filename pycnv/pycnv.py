@@ -470,7 +470,7 @@ class pycnv(object):
 
                 # Compute absolute salinity and potential density with the gsw toolbox
                 # check if we have enough data to compute
-                self.cdata  = None
+                self.cdata  = {}
                 self.cunits = {}
                 self.cnames = {}
                 try:
@@ -487,8 +487,12 @@ class pycnv(object):
                     self.data['p']
                     FLAG_COMPUTE1 = True
                 except:
-                    FLAG_COMPUTE1 = False                    
+                    FLAG_COMPUTE1 = False
 
+
+                # Compute the time as a datetime
+                print('Date')
+                self._compute_date()                    
                 if FLAG_COMPUTE0:
                     if(not((self.lon == numpy.NaN) or (self.lat == numpy.NaN))):
                         compdata    = self._compute_data(self.data, self.units_std, self.names_std, baltic=baltic,lon=self.lon, lat=self.lat,isen='0')
@@ -496,7 +500,8 @@ class pycnv(object):
                         compdata    = self._compute_data(self.data, self.units_std, self.names_std, baltic=baltic,isen = '0')
 
 
-                    self.cdata = compdata[0]
+                    self.cdata.update(compdata[0])
+
                     self.cunits.update(compdata[1])
                     self.cnames.update(compdata[2])
                 else:
@@ -507,10 +512,8 @@ class pycnv(object):
                         compdata    = self._compute_data(self.data, self.units_std, self.names_std, baltic=baltic,lon=self.lon, lat=self.lat,isen='1')
                     else:
                         compdata    = self._compute_data(self.data,self.units_std, self.names_std, baltic=baltic,isen = '0')
-                    if self.cdata == None:
-                        self.cdata = compdata[0]
-                    else:
-                        self.cdata.update(compdata[0])
+                        
+                    self.cdata.update(compdata[0])
                         
                     self.cunits.update(compdata[1])
                     self.cnames.update(compdata[2])
@@ -566,11 +569,18 @@ class pycnv(object):
                     pass                                                
                 
                 # Add pressure for convenience to cdata
-                if self.cdata is not None:
+                try:
+                    self.data['p']
+                    FLAG_HAS_P = True
+                except:
+                    FLAG_HAS_P = False
+
+                if FLAG_HAS_P:
                     self.cdata['p'] = self.data['p'][:]
                     self.cunits['p'] = self.units_std['p']
                     self.cnames['p'] = self.names_std['p']
-                    # Add oxygen in umol/l to cdata
+                # Add oxygen in umol/l to cdata
+                if True:    
                     oxyfac    = 1e3  / 22.391
                     oxy_names = ['oxy0','oxy1']
                     for noxy,oxy_name in enumerate(oxy_names):
@@ -599,8 +609,27 @@ class pycnv(object):
             
             
         self.valid_cnv = True
-        
-        
+
+    def _compute_date(self):
+        """Checks if the data['timeM'] exists and self.date, if yes compute
+        the time of each measurement
+
+        """
+        print('Computing date')
+        try:
+            self.data['timeM']
+            self.date
+        except:
+            logger.warning('Could not compute datetime dates')
+            
+        date = []
+        for m in self.data['timeM']:
+            dt = datetime.timedelta(minutes=m)
+            date.append(self.date + dt)
+            
+        date = numpy.asarray(date)
+        self.cdata.update({'date':date})
+            
     def _compute_data(self,data, units, names, p_ref = 0, baltic = False, lon=0, lat=0, isen = '0'):
         """ Computes convservative temperature, absolute salinity and potential density from input data, expects a recarray with the following entries data['C']: conductivity in mS/cm, data['T']: in Situ temperature in degree Celsius (ITS-90), data['p']: in situ sea pressure in dbar
         
@@ -634,7 +663,7 @@ class pycnv(object):
         [N2,pN2] = gsw.Nsquared(SA, CT, data['p'])        
         pot_rho                = gsw.pot_rho_t_exact(SA, T, data['p'], p_ref)
         names                  = ['SP' + sen,'SA' + sen,'pot_rho' + sen,'pt0' + sen,'CT' + sen,'N2' + sen,'pN2' + sen]
-        formats                = ['float','float','float','float','float']        
+        formats                = ['float','float','float','float','float']
         cdata                  = {}
         cdata['SP' + sen]      = SP
         cdata['SA' + sen]      = SA
