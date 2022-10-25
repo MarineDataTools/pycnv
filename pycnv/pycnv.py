@@ -616,19 +616,38 @@ class pycnv(object):
 
         """
         print('Computing date')
+        # Try first with timeM
         try:
             self.data['timeM']
             self.date
+            date = []
+            for m in self.data['timeM']:
+                dt = datetime.timedelta(minutes=m)
+                date.append(self.date + dt)
+                
+            date = numpy.asarray(date)
+            self.cdata.update({'date':date})
+            return
         except:
-            logger.warning('Could not compute datetime dates')
+            logger.warning('Could not compute datetime dates based on timeM')
             
-        date = []
-        for m in self.data['timeM']:
-            dt = datetime.timedelta(minutes=m)
-            date.append(self.date + dt)
+        # Try now with start_date and time_interval (used in SeaCats and Microcats)
+        try:
+            date = []
+            dt = self.interval_dt
+            for m in range(self.ndata):
+                date.append(self.start_date + m*dt)   
+                
+            self.cdata.update({'date':date})
+            return
+        except:
+            logger.warning('Could not compute datetime dates based on timeM')
+
             
-        date = numpy.asarray(date)
-        self.cdata.update({'date':date})
+            
+            
+            
+        
             
     def _compute_data(self,data, units, names, p_ref = 0, baltic = False, lon=0, lat=0, isen = '0'):
         """ Computes convservative temperature, absolute salinity and potential density from input data, expects a recarray with the following entries data['C']: conductivity in mS/cm, data['T']: in Situ temperature in degree Celsius (ITS-90), data['p']: in situ sea pressure in dbar
@@ -786,6 +805,13 @@ class pycnv(object):
                 #except Exception as e:
                 #    logger.warning('parse_header() start_time: Could not decode time: ( ' + datum + ' )' + str(e))                    
 
+            # Look for interval
+            if "interval = seconds:" in l:
+                try:
+                    self.interval_s = float(l.split(':')[1])
+                    self.interval_dt = datetime.timedelta(seconds=self.interval_s)
+                except:
+                    pass    
             # Look for sensor names and units of type:
             # # name 4 = t090C: Temperature [ITS-90, deg C]
             if "# name" in l:
@@ -854,6 +880,7 @@ class pycnv(object):
         """
         data = []
         nline = 0
+        self.ndata = 0
         if True:
             for l in raw:
                 line_orig = l
@@ -869,6 +896,7 @@ class pycnv(object):
 
                     if(len(ldata) == ncols):
                         data.append(ldata)
+                        self.ndata += 1
                 except Exception as e:
                     logger.warning('Could not convert data to floats in line:' + str(nline))
                     logger.debug('str:' + line_orig)
