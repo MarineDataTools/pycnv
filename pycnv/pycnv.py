@@ -627,6 +627,7 @@ class pycnv(object):
                 
             date = numpy.asarray(date)
             self.cdata.update({'date':date})
+            logger.info('Dates computed based on timeM')            
             return
         except:
             logger.warning('Could not compute datetime dates based on timeM')
@@ -642,6 +643,7 @@ class pycnv(object):
                 
             date = numpy.asarray(date)
             self.cdata.update({'date':date})
+            logger.info('Dates computed based on timeS')
             return
         except:
             logger.warning('Could not compute datetime dates based on timeS')            
@@ -654,9 +656,10 @@ class pycnv(object):
                 date.append(self.start_date + m*dt)   
                 
             self.cdata.update({'date':date})
+            logger.info('Dates computed based on start_date and time_interval')
             return
         except:
-            logger.warning('Could not compute datetime dates based on timeM')
+            logger.warning('Could not compute datetime dates based on start_date and time_interval')
 
             
             
