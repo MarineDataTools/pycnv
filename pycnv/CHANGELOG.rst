@@ -1,3 +1,4 @@
+0.4.6:  - date computation based on timeS data field
 0.4.5:  - added date computation based on interval: seconds and start_date
 0.4.4:  - simplified cdata, it is now from the initializtation onwards a dictionary and not None (might be emtpy though)
 0.4.3:  - computes the date of each measurement as a datetime object

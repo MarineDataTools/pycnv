@@ -630,6 +630,21 @@ class pycnv(object):
             return
         except:
             logger.warning('Could not compute datetime dates based on timeM')
+
+        # Now try with timeS
+        try:
+            self.data['timeS']
+            self.date
+            date = []
+            for m in self.data['timeS']:
+                dt = datetime.timedelta(seconds=m)
+                date.append(self.date + dt)
+                
+            date = numpy.asarray(date)
+            self.cdata.update({'date':date})
+            return
+        except:
+            logger.warning('Could not compute datetime dates based on timeS')            
             
         # Try now with start_date and time_interval (used in SeaCats and Microcats)
         try:
