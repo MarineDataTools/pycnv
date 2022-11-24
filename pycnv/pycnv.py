@@ -291,10 +291,10 @@ def parse_iow_header(header,pycnv_object=None):
                 lat_str_min = latitude.split()[1][:-1]
                 # The old Reise has ',' as decimal seperator, replace it with '.'
                 lon_str_min = lon_str_min.replace(',','.')
-                lat_str_min = lat_str_min.replace(',','.')                
+                lat_str_min = lat_str_min.replace(',','.')
                 # Convert to floats
-                lon = SIGN_WEST * float(longitude.split()[0]) + float(lon_str_min)/60.
-                lat = SIGN_NORTH * float(latitude.split()[0]) + float(lat_str_min)/60.
+                lon = SIGN_WEST * (float(longitude.split()[0]) + float(lon_str_min)/60.)
+                lat = SIGN_NORTH * (float(latitude.split()[0]) + float(lat_str_min)/60.)
 
             except Exception as e:
                 logger.warning('Could not get a valid position, setting it to unknown:' + str(e))
@@ -786,7 +786,7 @@ class pycnv(object):
                 pos_str_deg = pos_str.split(" ")[0]
                 pos_str_min = pos_str.split(" ")[1]
 
-                pos = SIGN * float(pos_str_deg) + float(pos_str_min)/60.
+                pos = SIGN * (float(pos_str_deg) + float(pos_str_min)/60.)
                 if("* NMEA Latitude" in l):
                     self.lat = pos
                     #print('lat',self.lat)
