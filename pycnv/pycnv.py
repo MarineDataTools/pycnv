@@ -867,6 +867,20 @@ class pycnv(object):
                 file_type = lsp[1]
                 file_type.replace(' ','')
                 self.file_type = file_type
+
+            if "** " in l: # User defined additional information
+                try:
+                    self.seabird_meta
+                except:
+                    self.seabird_meta = {}
+
+                try:
+                    logger.debug('Parsing custom header {:s}'.format(l))
+                    key = l.split(':')[0][3:]
+                    data = l.split(':')[1].lstrip()
+                    self.seabird_meta[key] = data
+                except:
+                    logger.warning('Could not parse custom header {:s}'.format(l))
         
         
     def _get_standard_channel_names(self, naming_rules):
