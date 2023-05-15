@@ -750,6 +750,28 @@ class pycnv(object):
         """
         Parses the header of the cnv file
         """
+        
+        # make educated guess for 'delimiter' of custom header items (lead by '**')
+        # will try "=" or ":"
+        custom_delim = "="
+        try:
+            custom_header_lines = [l for l in self.header.split('\n') if "**" in l and l != "**"]
+            ncust = len(custom_header_lines)
+            ncounted = "".join(custom_header_lines).count(custom_delim)
+            
+            if ncounted < ncust:
+                # try next delimiter
+                custom_delim = ":"
+        
+                custom_header_lines = [l for l in self.header if "**" in l and l != "**"]
+                ncust = len(custom_header_lines)
+                ncounted = "".join(custom_header_lines).count(custom_delim)
+                
+                if ncounted < ncust:
+                    logger.warning("Could not determine seabird metadata delimiter, will use '=', unexpected results likely.")
+        except:
+            logger.warning("Could not determine seabird metadata delimiter, will use '=', unexpected results likely.")
+        
         for l in self.header.split('\n'):
             if "* System UpLoad Time" in l:
                 line     = l.split(" = ")
@@ -873,11 +895,15 @@ class pycnv(object):
                     self.seabird_meta
                 except:
                     self.seabird_meta = {}
-
+                
                 try:
                     logger.debug('Parsing custom header {:s}'.format(l))
-                    key = l.split(':')[0][3:]
-                    data = l.split(':')[1].lstrip()
+                    splitted = l.split(custom_delim)
+                    key = splitted[0][3:].strip()
+                    if len(splitted)>2:
+                        data = custom_delim.join(splitted[1:]).strip()
+                    else:
+                        data = splitted[1].lstrip()
                     self.seabird_meta[key] = data
                 except:
                     logger.warning('Could not parse custom header {:s}'.format(l))
