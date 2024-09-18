@@ -82,7 +82,7 @@ def check_baltic(lon,lat):
     Returns:
        baltic: True: In Baltic, False: not in Baltic
     """
-    if(lon == None or lon == numpy.NaN or lat == None or lat == numpy.NaN):
+    if(lon == None or lon == numpy.nan or lat == None or lat == numpy.nan):
         return False
     
     for i in range(len(regions_baltic)):
@@ -302,8 +302,8 @@ def parse_iow_header(header,pycnv_object=None):
                 logger.warning('pos str:' + str(pos_str))
                 latitude = 'unknown'
                 longitude = 'unknown'
-                lat = numpy.NaN
-                lon = numpy.NaN
+                lat = numpy.nan
+                lon = numpy.nan
                 
             iow_data['lat'] = lat
             iow_data['lon'] = lon
@@ -364,8 +364,8 @@ class pycnv(object):
         self.upload_date = None
         self.start_date  = None
         self.nmea_date   = None        
-        self.lon = numpy.NaN
-        self.lat = numpy.NaN
+        self.lon = numpy.nan
+        self.lat = numpy.nan
 
         # Plotting variables
         self.figures = []
@@ -494,7 +494,7 @@ class pycnv(object):
                 print('Date')
                 self._compute_date()                    
                 if FLAG_COMPUTE0:
-                    if(not((self.lon == numpy.NaN) or (self.lat == numpy.NaN))):
+                    if(not((self.lon == numpy.nan) or (self.lat == numpy.nan))):
                         compdata    = self._compute_data(self.data, self.units_std, self.names_std, baltic=baltic,lon=self.lon, lat=self.lat,isen='0')
                     else:
                         compdata    = self._compute_data(self.data, self.units_std, self.names_std, baltic=baltic,isen = '0')
@@ -508,7 +508,7 @@ class pycnv(object):
                     logger.debug('Not computing data using the gsw toolbox, as we dont have the three standard parameters (C0,T0,p0)')
                 # Compute second sensor pair
                 if FLAG_COMPUTE1:
-                    if(not((self.lon == numpy.NaN) or (self.lat == numpy.NaN))):
+                    if(not((self.lon == numpy.nan) or (self.lat == numpy.nan))):
                         compdata    = self._compute_data(self.data, self.units_std, self.names_std, baltic=baltic,lon=self.lon, lat=self.lat,isen='1')
                     else:
                         compdata    = self._compute_data(self.data,self.units_std, self.names_std, baltic=baltic,isen = '0')
@@ -786,7 +786,7 @@ class pycnv(object):
             if("* NMEA Latitude" in l) or ("* NMEA Longitude" in l):
                 pos_str = l.rsplit('=')[1]
                 pos_str = pos_str.replace("\n","").replace("\r","")
-                SIGN = numpy.NaN
+                SIGN = numpy.nan
                 if("S" in pos_str):
                     SIGN = -1.
                     CHAR_NORTH = 'S'
@@ -1013,8 +1013,8 @@ class pycnv(object):
             except:
                 rstr += 'NaN' + sep
                 rstr += 'NaN' + sep
-            pmin = numpy.NaN
-            pmax = numpy.NaN
+            pmin = numpy.nan
+            pmax = numpy.nan
             num_samples = 0                    
             if(self.data != None):
                 #print(self.data)
@@ -1272,11 +1272,11 @@ the spines of the additional axes such that all ticks are visible
         for i in range(0,naxes):
             if(i%2 == 0):
                 i_bottom += 1
-                y_top.append(numpy.NaN)
+                y_top.append(numpy.nan)
                 y_bottom.append(0 - i_bottom * dy)
             else:
                 i_top += 1
-                y_bottom.append(numpy.NaN)
+                y_bottom.append(numpy.nan)
                 y_top.append(1 + i_top * dy)
 
 
