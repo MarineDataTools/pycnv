@@ -8,14 +8,22 @@ import sys
 import numpy
 import argparse
 import logging
-import pkg_resources
+
+try:
+    from importlib import resources as importlib_resources
+except ImportError:
+    import importlib_resources
 import yaml
 from pytz import timezone
 import datetime
 
 
 # Get the version
-version_file = pkg_resources.resource_filename('pycnv','VERSION')
+try:
+    with importlib_resources.path("pycnv", "VERSION") as p:
+        version_file = str(p)
+except Exception:
+    version_file = os.path.join(os.path.dirname(__file__), "VERSION")
 
 with open(version_file) as version_f:
    version = version_f.read().strip()
@@ -33,7 +41,11 @@ logger = logging.getLogger('pycnv_sum_folder')
 
 
 def get_stations():
-    stations_file = pkg_resources.resource_filename('pycnv', 'stations/iow_stations.yaml')
+    try:
+        with importlib_resources.path('pycnv', 'stations/iow_stations.yaml') as p:
+            stations_file = str(p)
+    except Exception:
+        stations_file = os.path.join(os.path.dirname(__file__), 'stations', 'iow_stations.yaml')
     f_stations = open(stations_file)
     # use safe_load instead load
     stations_yaml = yaml.safe_load(f_stations)
@@ -284,8 +296,12 @@ def main():
             sname_tmp = args.station[0]
         else:
             sname_tmp = None
-        stations_file = pkg_resources.resource_filename('pycnv', 'stations/iow_stations.yaml')
-        print('Stations file:',stations_file)
+        try:
+            with importlib_resources.path('pycnv', 'stations/iow_stations.yaml') as p:
+                stations_file = str(p)
+        except Exception:
+            stations_file = os.path.join(os.path.dirname(__file__), 'stations', 'iow_stations.yaml')
+        print('Stations file:', stations_file)
         f_stations = open(stations_file)
         # use safe_load instead load
         stations_yaml = yaml.safe_load(f_stations)
