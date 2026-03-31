@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pycnv"
+dynamic = ["version"]
+description = "Tool to convert Seabird cnv textfiles"
+readme = "README.rst"
+authors = [
+    {name = "Peter Holtermann", email = "peter.holtermann@iow.de"}
+]
+license = {text = "GPLv3"}
+requires-python = ">=3.7"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Topic :: Scientific/Engineering",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3 :: Only",
+]
+dependencies = [
+    "gsw",
+    "pyproj",
+    "pytz",
+    "pyaml",
+    "numpy",
+    "matplotlib",
+]
+
+[project.urls]
+Homepage = "https://github.com/MarineDataTools/pycnv"
+
+[project.scripts]
+pycnv = "pycnv.pycnv:main"
+pycnv_sum_folder = "pycnv.pycnv_sum_folder:main"
+
+[tool.setuptools]
+packages = ["pycnv"]
+zip-safe = false
+include-package-data = true
+
+[tool.setuptools.dynamic]
+version = {file = ["pycnv/VERSION"]}
+
+[tool.setuptools.package-data]
+pycnv = ["VERSION", "stations/iow_stations.yaml", "rules/standard_names.yaml"]

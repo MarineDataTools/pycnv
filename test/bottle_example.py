@@ -6,20 +6,14 @@ from pycnv import parse_time
 
 class bottle(object):
     def __init__(self, filename):
-
         self.filename        = filename
-
         self.header          = None
-
         self.start_date      = None
         self.nmea_date       = None   
-        
         self.lon             = numpy.nan
         self.lat             = numpy.nan
-
         self.data            = None
  
-        
         f = open(filename)
         ll = f.readlines()
         f.close()
@@ -66,7 +60,7 @@ class bottle(object):
             if("* NMEA Latitude" in l) or ("* NMEA Longitude" in l):
                 pos_str = l.rsplit('=')[1]
                 pos_str = pos_str.replace("\n","").replace("\r","")
-                SIGN = numpy.NaN
+                SIGN = numpy.nan
                 if("S" in pos_str):
                     SIGN = -1.
                 if("N" in pos_str):

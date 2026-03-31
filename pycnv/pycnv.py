@@ -10,7 +10,7 @@ try:
 except ImportError:
     import importlib_resources
 import yaml
-import pylab as pl
+import matplotlib.pyplot as plt
 import os
 import hashlib
 import errno
@@ -68,10 +68,9 @@ def parse_time(datum):
         start_date = start_date.replace(tzinfo=timezone('UTC'))
     except Exception as e:
         start_date = None
-        logger.warning('parse_header() start_time: Could not decode time: ( ' + datum + ' )' + str(e) + ' locale' + str(loc))
+        #logger.warning(f'parse_header() start_time: Could not decode time: ({datum}) {str(e)} locale: {str(loc)})
         
     if(start_date == None): # Try english
-        
         locale.setlocale(locale.LC_ALL, 'C')
         locnew = locale.getlocale()
         try:
@@ -79,11 +78,15 @@ def parse_time(datum):
             start_date = start_date.replace(tzinfo=timezone('UTC'))
         except Exception as e:
             start_date = None
-            logger.warning('parse_header() start_time: Could not decode time: ( ' + datum + ' )' + str(e) + ' locale' + str(locnew))
+            #logger.warning('parse_header() start_time: Could not decode time: ( ' + datum + ' )' + str(e) + ' locale' + str(locnew))
         
         # Restoring the original locale
         locale.setlocale(locale.LC_ALL, loc)
-    return start_date                 
+
+    if (start_date == None):  # Could not decode at all
+        logger.warning(
+            f'parse_header() start_time: Could not decode time: ({datum})')
+    return start_date
 
 
 def check_baltic(lon,lat):
@@ -504,7 +507,7 @@ class pycnv(object):
 
 
                 # Compute the time as a datetime
-                print('Date')
+                #print('Date')
                 self._compute_date()                    
                 if FLAG_COMPUTE0:
                     if(not((self.lon == numpy.nan) or (self.lat == numpy.nan))):
@@ -640,6 +643,8 @@ class pycnv(object):
                 
             date = numpy.asarray(date)
             self.cdata.update({'date':date})
+            self.cnames.update({'date': "Time and date"})
+            self.cunits.update({'date': "date"})
             logger.info('Dates computed based on timeM')            
             return
         except:
@@ -656,6 +661,8 @@ class pycnv(object):
                 
             date = numpy.asarray(date)
             self.cdata.update({'date':date})
+            self.cnames.update({'date': "Time and date"})
+            self.cunits.update({'date': "date"})
             logger.info('Dates computed based on timeS')
             return
         except:
@@ -669,6 +676,8 @@ class pycnv(object):
                 date.append(self.start_date + m*dt)   
                 
             self.cdata.update({'date':date})
+            self.cnames.update({'date': "Time and date"})
+            self.cunits.update({'date': "date"})
             logger.info('Dates computed based on start_date and time_interval')
             return
         except:
@@ -1056,7 +1065,7 @@ class pycnv(object):
         rstr += '#\n'
         rstr += '#\n'        
         rstr += '#Structure:\n'
-        rstr += '#Index,name (as in cnv file),standard name (mapped by pycnv), long_name, unit (as in cnv file):\n'
+        rstr += '#Index;name (as in cnv file);standard name (mapped by pycnv); long_name; unit (as in cnv file):\n'
 
         for n,var in enumerate(self.channels):
             var_name = var['name']
@@ -1074,7 +1083,7 @@ class pycnv(object):
         rstr += '#\n'
         rstr += '#\n'        
         rstr += '#Structure:\n'
-        rstr += '#Index,name, long_name, unit (as in cnv file):\n'        
+        rstr += '#name; long_name; unit (as in cnv file):\n'
         for n,var in enumerate(self.cdata.keys()):
             rstr += var + ';' + self.cnames[var] + ';' + self.cunits[var] + '\n'
 
@@ -1098,7 +1107,7 @@ class pycnv(object):
            save:
            figsize: The size of the figure plotted
            fig_prefix: The prefix put before the figname (this can be a folder together with a file prefix)
-           figure: Matplotlib figure for plotting, if None pl.figure() is called
+           figure: Matplotlib figure for plotting, if None plt.figure() is called
 
         """
         # Looking for data for y-axis
@@ -1178,12 +1187,12 @@ class pycnv(object):
 
         # Check if we got a figure a function argument
         if figure == None:
-            fig = pl.figure()
+            fig = plt.figure()
         else:
             fig = figure
         # Set the size to din A4
         fig.set_size_inches(figsize)
-        #ax = pl.subplot(1,1,1)
+        #ax = plt.subplot(1,1,1)
         ax = fig.add_subplot(1,1,1)
         self.figures.append(fig)
         ax_dict = {'figure':fig,'axes':[ax],'x_data':x_data,'x_names':x_names,'x_units':x_units,'y_data':y_data,'y_names':y_names,'y_units':y_units,'x_colors':x_colors,'x_lims':x_lims,'y_lim':ylim}
@@ -1192,7 +1201,7 @@ class pycnv(object):
         self.axes.append(ax_dict)
         # Drawing the data
         self._draw_data(ax_dict)
-        
+
         if save:
             base_name = os.path.basename(self.filename)
             dstr = self.date.strftime('%Y-%m-%d_%H.%M.%S')        
@@ -1206,58 +1215,74 @@ class pycnv(object):
             poststr = '.pdf'
             fig_name_final = fig_prefix + fig_name + varstr + poststr
             logger.info('Saving file to file: ' + fig_name_final)
-            pl.savefig(fig_name_final)
+            plt.savefig(fig_name_final)
 
         if show:
-            pl.show()
+            plt.show()
 
-    def _get_colors(self,names,colors=None):
-        """ Function to define a color for the given name
-        """
-        cmap = pl.cm.Set1
-        plot_colors = [None]*len(names)
-        # The different data types shall have different colors
-        data_types  = {'salt':['SA','SP','sal'],'temp':['CT','T','pt'],'dens':['pot_rho','sigma'],'oxy':['sbeox','oxy']}
-        data_colors = {'temp':[(255,0,0),(220,20,60),(178,34,34)],'salt':[(0,0,255),(65,105,225),(0,0,205)],'dens':[(0,0,0),(50,50,50),(128,128,128)],'oxy':[(0,128,0),(34,139,34),(85,107,47)]}
-        # Grrr, have to convert it to floats between 0 and 1
-        for col in data_colors:
-            for c in range(len(data_colors[col])):
-                data_colors[col][c] = list(numpy.asarray(data_colors[col][c])/255)
-        #cmap = pl.cm.tab20c
-        #cmap.N
-        num_col = 0
-        for n,name in enumerate(names):
-            for data_type in data_types:
-                if(plot_colors[n] != None):
+    def _get_colors(self, names, colors=None):
+        """ Function to define a color for the given name """
+        # Use standard imports (assuming np is numpy)
+        import numpy as np
+
+        # Define categories and their specific color palettes (normalized to 0-1)
+        # Using a list here so we can pick by index instead of popping
+        data_colors = {
+            'temp': [(255, 0, 0), (220, 20, 60), (178, 34, 34)],
+            'salt': [(0, 0, 255), (65, 105, 225), (0, 0, 205)],
+            'dens': [(0, 0, 0), (50, 50, 50), (128, 128, 128)],
+            'oxy': [(0, 128, 0), (34, 139, 34), (85, 107, 47)]
+        }
+
+        # Convert RGB to 0.0 - 1.0 scale once
+        palettes = {k: [np.array(c) / 255 for c in v] for k, v in data_colors.items()}
+
+        data_types = {
+            'salt': ['SA', 'SP', 'sal'],
+            'temp': ['CT', 'T', 'pt'],
+            'dens': ['pot_rho', 'sigma'],
+            'oxy': ['sbeox', 'oxy']
+        }
+
+        plot_colors = []
+        fallback_idx = 0
+
+        # Track how many of each type we've seen to pick the next color in the palette
+        usage_counts = {k: 0 for k in data_types}
+
+        for name in names:
+            assigned_color = None
+
+            for dtype, keywords in data_types.items():
+                if any(k in name for k in keywords):
+                    palette = palettes[dtype]
+                    idx = usage_counts[dtype]
+
+                    # Pick color from palette, or fallback to Set1 if palette exhausted
+                    if idx < len(palette):
+                        assigned_color = palette[idx]
+                    else:
+                        assigned_color = plt.cm.Set1(fallback_idx % 9)
+                        fallback_idx += 1
+
+                    usage_counts[dtype] += 1
                     break
-                for d in data_types[data_type]:
-                    if d in name:
-                        #logger.debug('_get_color(): found data type' + data_type)
-                        #print('_get_color(): found data type: ' + d)
-                        if(len(data_colors[data_type])>0):
-                            col = data_colors[data_type].pop()
-                        else:
-                            num_col +=1
-                            col = pl.cm.Set1(num_col)
-                            
-                        plot_colors[n] = col
-                        break
 
-            if(plot_colors == None):
-                num_col +=1
-                col = pl.cm.Set1(num_col)                
-                plot_colors[n] = col
-        
+            # FINAL FALLBACK: If name matches nothing
+            if assigned_color is None:
+                assigned_color = plt.cm.Set1(fallback_idx % 9)
+                fallback_idx += 1
+
+            plot_colors.append(assigned_color)
 
         return plot_colors
-        
+
     def _draw_data(self,data):
         """Draws in the axes all the data defined in the given dictionary and
 creates additional axes with the same size, if necessary. It will move
 the spines of the additional axes such that all ticks are visible
 
         """
-
         fig    = data['figure']
         ax     = data['axes'][0]
         xdata  = data['x_data']
@@ -1305,7 +1330,7 @@ the spines of the additional axes such that all ticks are visible
             if(i>0):
                 # This is a nasty hack, otherwise a same position will result in the same axes
                 pos_new[0] += 1e-12
-                #data['axes'].append(pl.axes(pos_new))
+                #data['axes'].append(plt.axes(pos_new))
                 data['axes'].append(fig.add_axes(pos_new))
                 
             axtmp = data['axes'][-1]
@@ -1367,7 +1392,8 @@ the spines of the additional axes such that all ticks are visible
         # Plotting the title
         
         axtmp = data['axes'][0]
-        fs = axtmp.xaxis.get_major_ticks()[0].label.get_fontsize() # Get the fontsize of the ticks
+        fs = axtmp.xaxis.get_ticklabels()[0].get_fontsize()
+        #fs = axtmp.xaxis.get_major_ticks()[0].label.get_fontsize() # Get the fontsize of the ticks
         title_str = ''
         title_str += self.filename + '\n'
         title_str += self.date.strftime('%Y-%m-%d %H:%M:%S') + '; ' 
@@ -1440,7 +1466,12 @@ def test_pycnv():
 # Main function
 def main():
     sum_help         = 'Gives a csv compatible summary'
-    plot_help        = 'Plots the cnv file, list the parameters in a comma separated list, e.g. --plot CT00,pt00,oxy use the arguments "show" to immidiately show the figure (will halt the code until the figure is closed) and/or "save" to save the figure'
+    plot_help        = '''Plots the cnv file, list the parameters in a comma separated list, 
+                          e.g. --plot CT00,pt00,oxy use the arguments "show" to immidiately show 
+                          the figure (will halt the code until the figure is closed) and/or "save" to save the figure.
+                          To get a list of possible variables to plot, use the --variables option 
+                          for a list of variables in the file.
+                          Without an argument it defaults to "CT00,SA00,pot_rho00,show,save"'''
     plot_prefix_help = 'The prefix before the filename, standars is "./", this is usefule to define a path and/or a fie prefix, e.g. --plot_prefix figures/ctd_casts_of_important_cruise__'
     var_help         = 'Lists all the available variables within the file, separated between the orignal data within the file (data) and the computed data (cdata)'        
     sumhead_help     = 'Gives the header to the csv compatible summary'
@@ -1449,7 +1480,7 @@ def main():
     parser.add_argument('--summary', '-s', action='store_true', help=sum_help)
     parser.add_argument('--summary_header', '-sh', action='store_true', help=sumhead_help)
     #https://stackoverflow.com/questions/13346540/argparse-optional-argument-before-positional-argument    
-    parser.add_argument('--plot', '-p', nargs='?', help=plot_help)
+    parser.add_argument('--plot', '-p', nargs='?', const=True, help=plot_help)
     parser.add_argument('--plot_prefix', '-pre', nargs='?', help=plot_prefix_help)    
     parser.add_argument('--verbose', '-v', action='count')
     #parser.add_argument('--version', action='store_true')
@@ -1496,17 +1527,24 @@ def main():
     #
     # Plot the file
     #
-    if(args.plot != None):
+    if args.plot is not(None):
+        if args.plot == True:
+            plot_args = 'CT00, SA00 , pot_rho00, show , save'
+        else:
+            plot_args = args.plot
+
         FLAG_SHOW = False
         FLAG_SAVE = False
         variables_plot = []
-        for var in args.plot.split(','):
-            if(var.upper() == 'SHOW'):
+        for var in plot_args.split(','):
+            var_s = var.strip()
+            #print("var",var,var_s)
+            if(var_s.upper() == 'SHOW'):
                 FLAG_SHOW = True
-            elif( var.upper() == 'SAVE'):
+            elif( var_s.upper() == 'SAVE'):
                 FLAG_SAVE = True
             else:
-                variables_plot.append(var)
+                variables_plot.append(var_s)
 
         if(args.plot_prefix == None):
             plot_prefix = "./"
