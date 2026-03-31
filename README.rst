@@ -27,6 +27,10 @@ earlier versions, but its not supported. The newest
 depends also on python 3.5+, pycnv heavily depends on the gsw toolbox. It
 therefore strongly recommended to use python 3.5+.
 
+___
+
+CT Note: Python versions below 3.10 are now EOL'ed, so I'm gonna update to require 3.10+ if thats okay?
+
 User
 ____
 
@@ -34,19 +38,19 @@ ____
 Install as a user using pip
 
 .. code:: bash
-	  
+
    pip install pycnv
 
 Install as a user from the repository
 
 .. code:: bash
-	  
+
    python setup.py install --user
 
 Uninstall as a user
-   
+
 .. code:: bash
-	  
+
    pip uninstall pycnv
 
 
@@ -57,13 +61,15 @@ _________
 Install as a developer
 
 .. code:: bash
-	  
-   python setup.py develop --user
+
+   conda env create -f ci/env.yml
+   conda activate pycnv-dev
+   pip install -e .
 
 Uninstall as a user
-   
+
 .. code:: bash
-	  
+
    pip uninstall pycnv
 
 
@@ -85,16 +91,16 @@ FEATURES
   is stored in a second field called computed data:
   cdata. E.g. cdata['SA00']. The code used to compute the properties
   are
-  
+
   .. code:: python
-	    
+
             SP = gsw.SP_from_C(data['C' + isen], T, data['p'])
             SA = gsw.SA_from_SP(SP,data['p'],lon = lon, lat = lat)
             if(baltic == True):
 	        SA = gsw.SA_from_SP_Baltic(SA,lon = lon, lat = lat)
-            
+
 	    PT = gsw.pt0_from_t(SA, T, data['p'])
-            CT = gsw.CT_from_t(SA, T, data['p'])        
+            CT = gsw.CT_from_t(SA, T, data['p'])
             pot_rho = gsw.pot_rho_t_exact(SA, T, data['p'], p_ref)
 
 - The cnv object provides standard entries for pressure (cnv.p),
@@ -127,15 +133,15 @@ The package installs the executables:
 
 - pycnv_sum_folder
 
-  
-EXAMPLES 
+
+EXAMPLES
 --------
 Plot the absolute salinity and oxygen of a CTD cast:
 
 .. code:: python
-	  
+
 	  import pycnv
-	  import pylab as pl 
+	  import pylab as pl
 	  fname = 'test.cnv' # Some CTD cast
 
 	  cnv = pycnv.pycnv(fname)
@@ -155,7 +161,7 @@ Plot the absolute salinity and oxygen of a CTD cast:
 	  # Get unit of derived data
 	  datad0_unit = cnv.cunits[keyd0]
 
-	  # Standard names are mapped to 
+	  # Standard names are mapped to
 	  # cnv.p,cnv.CT,cnv.T,cnv.SP,cnv.oxy
 	  # units are _unit, e.g. cnv.p_unit
 
@@ -179,11 +185,11 @@ Plot the absolute salinity and oxygen of a CTD cast:
 	  pl.show()
 
 
-	  
+
 Lists all predefined stations (in terminal):
 
 .. code:: bash
-	  
+
 	  pycnv_sum_folder --list_stations
 
 
@@ -192,14 +198,14 @@ station TF0271 with a radius of 5000 m, prints it to the terminal and
 saves it into the file TF271.txt  (in terminal):
 
 .. code:: bash
-	  
+
 	  pycnv_sum_folder --data_folder cnv_data --station TF0271 5000 -p -f TF271.txt
 
 
 Show and plot conservative temperature, salinity and potential density of a cnv file into a pdf:
 
 .. code:: bash
-	  
+
 	  pycnv --plot show,save,CT00,SA00,pot_rho00 ctd_cast.cnv
 
 
@@ -208,7 +214,7 @@ Interpolate all CTD casts on station TF0271 onto the same pressure axis and make
 see code pycnv/test/make_netcdf.py
 
 
-Devices tested 
+Devices tested
 --------------
 
 - SEACAT (SBE16) V4.0g
@@ -220,8 +226,3 @@ Devices tested
 - SBE 11plus V 5.1g
 
 - Sea-Bird SBE 9 Software Version 4.206
-
-	  
-
-
-
