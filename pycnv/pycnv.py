@@ -4,7 +4,11 @@ import numpy
 import logging
 import sys
 import argparse
-import pkg_resources
+
+try:
+    from importlib import resources as importlib_resources
+except ImportError:
+    import importlib_resources
 import yaml
 import pylab as pl
 import os
@@ -12,10 +16,19 @@ import hashlib
 import errno
 import locale
 
-standard_name_file = pkg_resources.resource_filename('pycnv', 'rules/standard_names.yaml')
+try:
+    with importlib_resources.path("pycnv", "rules/standard_names.yaml") as p:
+        standard_name_file = str(p)
+except Exception:
+    standard_name_file = os.path.join(
+        os.path.dirname(__file__), "rules", "standard_names.yaml"
+    )
 
-# Get the version
-version_file = pkg_resources.resource_filename('pycnv','VERSION')
+try:
+    with importlib_resources.path("pycnv", "VERSION") as p:
+        version_file = str(p)
+except Exception:
+    version_file = os.path.join(os.path.dirname(__file__), "VERSION")
 
 with open(version_file) as version_f:
    version = version_f.read().strip()
