@@ -1,13 +1,8 @@
 import pytest
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as pl
-
-cartopy = pytest.importorskip("cartopy")
-import cartopy.crs as ccrs
-
 import pycnv
+
+import matplotlib.pyplot as pl
+import cartopy.crs as ccrs
 
 
 def test_plot_baltic_test_regions():
@@ -42,3 +37,19 @@ def test_plot_baltic_stations():
         ax.plot(s["longitude"], s["latitude"], ".k")
         ax.text(s["longitude"], s["latitude"], s["name"])
     pl.close(fig)
+
+
+def test_regions_baltic_exact():
+    expected = [
+        [[10.2, 13.0], [56.2, 57.5]],
+        [[9.4, 13.4], [53.9, 56.3]],
+        [[13.3, 17.0], [53.4, 56.3]],
+        [[15.9, 24.6], [54.2, 60.2]],
+        [[24.3, 30.4], [59.1, 60.8]],
+        [[16.8, 23.3], [60.1, 63.3]],
+        [[18.8, 25.6], [63.1, 66.2]],
+    ]
+    assert len(pycnv.regions_baltic) == len(expected)
+    for actual_region, expected_region in zip(pycnv.regions_baltic, expected):
+        assert actual_region[0] == pytest.approx(expected_region[0])
+        assert actual_region[1] == pytest.approx(expected_region[1])

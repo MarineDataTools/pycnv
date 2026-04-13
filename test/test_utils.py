@@ -1,5 +1,4 @@
 import datetime
-import pytest
 import pycnv
 
 
@@ -13,6 +12,7 @@ def test_parse_time_basic():
     assert result.minute == 31
     assert result.second == 55
     assert result.tzinfo is not None
+    assert str(result.tzinfo) == "UTC"
 
 
 def test_parse_time_invalid_returns_none():
@@ -31,6 +31,9 @@ def test_check_baltic_outside():
     # North Atlantic
     assert pycnv.check_baltic(-10.0, 50.0) is False
 
+    # Might want to add bounds here? IDK...
+    assert pycnv.check_baltic(-1000, -1000) is False
+
 
 def test_get_stations_returns_list():
     stations = pycnv.get_stations()
@@ -44,19 +47,3 @@ def test_get_stations_keys():
         assert "name" in s
         assert "longitude" in s
         assert "latitude" in s
-
-
-def test_regions_baltic_exact():
-    expected = [
-        [[10.2, 13.0], [56.2, 57.5]],
-        [[9.4, 13.4], [53.9, 56.3]],
-        [[13.3, 17.0], [53.4, 56.3]],
-        [[15.9, 24.6], [54.2, 60.2]],
-        [[24.3, 30.4], [59.1, 60.8]],
-        [[16.8, 23.3], [60.1, 63.3]],
-        [[18.8, 25.6], [63.1, 66.2]],
-    ]
-    assert len(pycnv.regions_baltic) == len(expected)
-    for actual_region, expected_region in zip(pycnv.regions_baltic, expected):
-        assert actual_region[0] == pytest.approx(expected_region[0])
-        assert actual_region[1] == pytest.approx(expected_region[1])
