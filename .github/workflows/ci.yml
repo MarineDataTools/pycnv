@@ -19,7 +19,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
-      max-parallel: 10 # ACCESS-NRI has a limit of 20. This leaves room for other jobs.
+      max-parallel: 10 
       matrix:
         os: ["ubuntu-latest", "windows-latest", "macos-latest"]
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
